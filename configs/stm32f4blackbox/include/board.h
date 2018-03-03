@@ -247,19 +247,19 @@
 #  define GPIO_CAN2_TX GPIO_CAN2_TX_1
 #endif
 
-/* UART2:
- *
- * The STM32F4 Discovery has no on-board serial devices, but the console is
- * brought out to PA2 (TX) and PA3 (RX) for connection to an external serial
- * device. (See the README.txt file for other options)
- *
- * These pins selections, however, conflict with pin usage on the STM32F4DIS-BB.
+
+/* UART1:
  */
 
-#ifndef CONFIG_STM32F4DISBB
-#  define GPIO_USART2_RX GPIO_USART2_RX_1
-#  define GPIO_USART2_TX GPIO_USART2_TX_1
-#endif
+#define GPIO_USART1_RX GPIO_USART1_RX_1
+#define GPIO_USART1_TX GPIO_USART1_TX_1
+
+
+/* UART2:
+ */
+
+#define GPIO_USART2_RX GPIO_USART2_RX_1
+#define GPIO_USART2_TX GPIO_USART2_TX_1
 
 /* UART3: (Used in pseudoterm configuration) */
 
