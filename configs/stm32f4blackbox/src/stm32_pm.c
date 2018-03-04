@@ -45,7 +45,8 @@
 
 #include "up_internal.h"
 #include "stm32_pm.h"
-#include "stm32f4discovery.h"
+
+#include "stm32f4blackbox.h"
 
 #ifdef CONFIG_PM
 

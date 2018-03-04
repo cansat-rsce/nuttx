@@ -56,7 +56,7 @@
 #include "stm32_rcc.h"
 #include "stm32_exti.h"
 
-#include "stm32f4discovery.h"
+#include "stm32f4blackbox.h"
 
 /****************************************************************************
  * Pre-processor Definitions

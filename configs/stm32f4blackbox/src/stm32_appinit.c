@@ -41,7 +41,7 @@
 
 #include <nuttx/board.h>
 
-#include "stm32f4discovery.h"
+#include "stm32f4blackbox.h"
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -82,10 +82,6 @@
 
 int board_app_initialize(uintptr_t arg)
 {
-#ifdef CONFIG_SENSORS_BMP180
-  stm32_bmp180initialize("/dev/press0");
-#endif
-
 #ifdef CONFIG_BOARD_INITIALIZE
   /* Board initialization already performed by board_initialize() */
 

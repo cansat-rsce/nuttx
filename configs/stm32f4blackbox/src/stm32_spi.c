@@ -51,7 +51,7 @@
 #include "chip.h"
 #include "stm32.h"
 
-#include "stm32f4discovery.h"
+#include "stm32f4blackbox.h"
 
 #if defined(CONFIG_STM32_SPI1) || defined(CONFIG_STM32_SPI2) || defined(CONFIG_STM32_SPI3)
 
@@ -69,28 +69,7 @@
 
 void weak_function stm32_spidev_initialize(void)
 {
-#ifdef CONFIG_STM32_SPI1
-  (void)stm32_configgpio(GPIO_CS_MEMS);    /* MEMS chip select */
-#endif
-#if defined(CONFIG_STM32_SPI2) && defined(CONFIG_SENSORS_MAX31855)
-  (void)stm32_configgpio(GPIO_MAX31855_CS); /* MAX31855 chip select */
-#endif
-#if defined(CONFIG_LCD_ST7567)
-  (void)stm32_configgpio(STM32_LCD_CS);       /* ST7567 chip select */
-#endif
-#if defined(CONFIG_STM32_SPI2) && defined(CONFIG_SENSORS_MAX6675)
-  (void)stm32_configgpio(GPIO_MAX6675_CS); /* MAX6675 chip select */
-#endif
-#if defined(CONFIG_LCD_UG2864AMBAG01) || defined(CONFIG_LCD_UG2864HSWEG01) || \
-    defined(CONFIG_LCD_SSD1351)
-  (void)stm32_configgpio(GPIO_OLED_CS);    /* OLED chip select */
-# if defined(CONFIG_LCD_UG2864AMBAG01)
-  (void)stm32_configgpio(GPIO_OLED_A0);    /* OLED Command/Data */
-# endif
-# if defined(CONFIG_LCD_UG2864HSWEG01) || defined(CONFIG_LCD_SSD1351)
-  (void)stm32_configgpio(GPIO_OLED_DC);    /* OLED Command/Data */
-# endif
-#endif
+
 }
 
 /****************************************************************************
@@ -122,7 +101,7 @@ void weak_function stm32_spidev_initialize(void)
 void stm32_spi1select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
 {
   spiinfo("devid: %d CS: %s\n", (int)devid, selected ? "assert" : "de-assert");
-
+/*
 #ifdef CONFIG_LCD_ST7567
   if (devid == SPIDEV_DISPLAY(0))
     {
@@ -140,6 +119,7 @@ void stm32_spi1select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
     {
       stm32_gpiowrite(GPIO_CS_MEMS, !selected);
     }
+*/
 }
 
 uint8_t stm32_spi1status(FAR struct spi_dev_s *dev, uint32_t devid)

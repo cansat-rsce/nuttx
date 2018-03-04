@@ -52,7 +52,7 @@
 #include "up_internal.h"
 
 #include "stm32.h"
-#include "stm32f4discovery.h"
+#include "stm32f4blackbox.h"
 
 #ifndef CONFIG_ARCH_LEDS
 

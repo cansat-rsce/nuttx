@@ -47,9 +47,9 @@
 #include <nuttx/irq.h>
 #include <arch/board/board.h>
 
+#include "stm32f4blackbox.h"
 #include "up_arch.h"
 #include "up_internal.h"
-#include "stm32f4discovery.h"
 
 /************************************************************************************
  * Pre-processor Definitions

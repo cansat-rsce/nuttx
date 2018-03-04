@@ -331,30 +331,6 @@
 #define GPIO_TIM8_CH1IN  GPIO_TIM8_CH1IN_1
 #define GPIO_TIM8_CH2IN  GPIO_TIM8_CH2IN_1
 
-/* Ethernet *************************************************************************/
-
-#if defined(CONFIG_STM32F4DISBB) && defined(CONFIG_STM32_ETHMAC)
-  /* RMII interface to the LAN8720 PHY */
-
-#  ifndef CONFIG_STM32_RMII
-#    error CONFIG_STM32_RMII must be defined
-#  endif
-
-  /* Clocking is provided by an external 25Mhz XTAL */
-
-#  ifndef CONFIG_STM32_RMII_EXTCLK
-#    error CONFIG_STM32_RMII_EXTCLK must be defined
-#  endif
-
-  /* Pin disambiguation */
-
-#  define GPIO_ETH_RMII_TX_EN GPIO_ETH_RMII_TX_EN_1
-#  define GPIO_ETH_RMII_TXD0  GPIO_ETH_RMII_TXD0_1
-#  define GPIO_ETH_RMII_TXD1  GPIO_ETH_RMII_TXD1_1
-#  define GPIO_ETH_PPS_OUT    GPIO_ETH_PPS_OUT_1
-
-#endif
-
 /* DMA Channl/Stream Selections *****************************************************/
 /* Stream selections are arbitrary for now but might become important in the future
  * if we set aside more DMA channels/streams.

@@ -48,7 +48,7 @@
 #include <nuttx/mmcsd.h>
 
 #include "stm32.h"
-#include "stm32f4discovery.h"
+#include "stm32f4blackbox.h"
 
 #ifdef HAVE_SDIO
 

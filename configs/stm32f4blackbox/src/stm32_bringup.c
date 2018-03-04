@@ -70,7 +70,7 @@
 #  include <nuttx/usb/rndis.h>
 #endif
 
-#include "stm32f4discovery.h"
+#include "stm32f4blackbox.h"
 
 /* Conditional logic in stm32f4discovery.h will determine if certain features
  * are supported.  Tests for these features need to be made after including
@@ -107,40 +107,10 @@ int stm32_bringup(void)
 #endif
   int ret = OK;
 
-#ifdef CONFIG_SENSORS_BH1750FVI
-  stm32_bh1750initialize("/dev/light0");
-#endif
-
-#ifdef CONFIG_SENSORS_ZEROCROSS
-  /* Configure the zero-crossing driver */
-
-  stm32_zerocross_initialize();
-#endif
-
 #ifdef CONFIG_RGBLED
   /* Configure the RGB LED driver */
 
   stm32_rgbled_setup();
-#endif
-
-#if defined(CONFIG_PCA9635PW)
-  /* Initialize the PCA9635 chip */
-
-  ret = stm32_pca9635_initialize();
-  if (ret < 0)
-    {
-      serr("ERROR: stm32_pca9635_initialize failed: %d\n", ret);
-    }
-#endif
-
-#ifdef CONFIG_VIDEO_FB
-  /* Initialize and register the framebuffer driver */
-
-  ret = fb_register(0, 0);
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "ERROR: fb_register() failed: %d\n", ret);
-    }
 #endif
 
 #ifdef HAVE_SDIO
@@ -208,16 +178,6 @@ int stm32_bringup(void)
     }
 #endif
 
-#ifdef CONFIG_INPUT_NUNCHUCK
-  /* Register the Nunchuck driver */
-
-  ret = nunchuck_initialize("/dev/nunchuck0");
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "ERROR: nunchuck_initialize() failed: %d\n", ret);
-    }
-#endif
-
 #ifdef CONFIG_SENSORS_QENCODER
   /* Initialize and register the qencoder driver */
 
@@ -265,16 +225,6 @@ int stm32_bringup(void)
     }
 #endif
 
-#ifdef HAVE_CS43L22
-  /* Configure CS43L22 audio */
-
-  ret = stm32_cs43l22_initialize(1);
-  if (ret != OK)
-    {
-      serr("Failed to initialize CS43L22 audio: %d\n", ret);
-    }
-#endif
-
 #ifdef HAVE_ELF
   /* Initialize the ELF binary loader */
 
@@ -282,22 +232,6 @@ int stm32_bringup(void)
   if (ret < 0)
     {
       serr("ERROR: Initialization of the ELF loader failed: %d\n", ret);
-    }
-#endif
-
-#ifdef CONFIG_SENSORS_MAX31855
-  ret = stm32_max31855initialize("/dev/temp0");
-  if (ret < 0)
-    {
-      serr("ERROR:  stm32_max31855initialize failed: %d\n", ret);
-    }
-#endif
-
-#ifdef CONFIG_SENSORS_MAX6675
-  ret = stm32_max6675initialize("/dev/temp0");
-  if (ret < 0)
-    {
-      serr("ERROR:  stm32_max6675initialize failed: %d\n", ret);
     }
 #endif
 
@@ -318,24 +252,6 @@ int stm32_bringup(void)
     {
       serr("ERROR: Failed to mount romfs at %s: %d\n",
            STM32_ROMFS_MOUNTPOINT, ret);
-    }
-#endif
-
-#ifdef CONFIG_SENSORS_XEN1210
-  ret = xen1210_archinitialize(0);
-  if (ret < 0)
-    {
-      serr("ERROR:  xen1210_archinitialize failed: %d\n", ret);
-    }
-#endif
-
-#ifdef CONFIG_STM32F4DISCO_LIS3DSH
-  /* Create a lis3dsh driver instance fitting the chip built into stm32f4discovery */
-
-  ret = stm32_lis3dshinitialize("/dev/acc0");
-  if (ret < 0)
-    {
-      serr("ERROR: Failed to initialize LIS3DSH driver: %d\n", ret);
     }
 #endif
 

@@ -50,7 +50,8 @@
 
 #include "stm32.h"
 #include "stm32_can.h"
-#include "stm32f4discovery.h"
+
+#include "stm32f4blackbox.h"
 
 #ifdef CONFIG_CAN
 

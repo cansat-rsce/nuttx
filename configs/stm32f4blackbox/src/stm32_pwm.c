@@ -48,7 +48,8 @@
 #include "chip.h"
 #include "up_arch.h"
 #include "stm32_pwm.h"
-#include "stm32f4discovery.h"
+
+#include "stm32f4blackbox.h"
 
 /************************************************************************************
  * Pre-processor Definitions

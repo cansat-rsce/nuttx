@@ -47,7 +47,7 @@
 #include "up_arch.h"
 
 #include "stm32.h"
-#include "stm32f4discovery.h"
+#include "stm32f4blackbox.h"
 
 /****************************************************************************
  * Public Functions
@@ -87,15 +87,6 @@ void stm32_boardinitialize(void)
   if (stm32_usbinitialize)
     {
       stm32_usbinitialize();
-    }
-#endif
-
-#ifdef HAVE_NETMONITOR
-  /* Configure board resources to support networking. */
-
-  if (stm32_netinitialize)
-    {
-      stm32_netinitialize();
     }
 #endif
 

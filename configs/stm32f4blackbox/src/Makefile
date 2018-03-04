@@ -60,48 +60,8 @@ ifeq ($(CONFIG_STM32_OTGFS),y)
 CSRCS += stm32_usb.c
 endif
 
-ifeq ($(CONFIG_SENSORS_BH1750FVI),y)
-CSRCS += stm32_bh1750fvi.c
-endif
-
-ifeq ($(CONFIG_SENSORS_BMP180),y)
-CSRCS += stm32_bmp180.c
-endif
-
-ifeq ($(CONFIG_LCD_ST7567),y)
-  CSRCS += stm32_st7567.c
-endif
-
-ifeq ($(CONFIG_INPUT_NUNCHUCK),y)
-  CSRCS += stm32_nunchuck.c
-endif
-
-ifeq ($(CONFIG_SENSORS_MAX31855),y)
-CSRCS += stm32_max31855.c
-endif
-
-ifeq ($(CONFIG_STM32F4DISCO_LIS3DSH),y)
-CSRCS += stm32_lis3dsh.c
-endif
-
-ifeq ($(CONFIG_SENSORS_MAX6675),y)
-CSRCS += stm32_max6675.c
-endif
-
-ifeq ($(CONFIG_PCA9635PW),y)
-CSRCS += stm32_pca9635.c
-endif
-
 ifeq ($(CONFIG_STM32_SDIO),y)
 CSRCS += stm32_sdio.c
-endif
-
-ifeq ($(CONFIG_STM32_ETHMAC),y)
-CSRCS += stm32_ethernet.c
-endif
-
-ifeq ($(CONFIG_RGBLED),y)
-CSRCS += stm32_rgbled.c
 endif
 
 ifeq ($(CONFIG_PWM),y)
@@ -110,10 +70,6 @@ endif
 
 ifeq ($(CONFIG_SENSORS_QENCODER),y)
 CSRCS += stm32_qencoder.c
-endif
-
-ifeq ($(CONFIG_SENSORS_XEN1210),y)
-CSRCS += stm32_xen1210.c
 endif
 
 ifeq ($(CONFIG_NSH_LIBRARY),y)
@@ -128,32 +84,12 @@ ifeq ($(CONFIG_PM_BUTTONS),y)
 CSRCS += stm32_pmbuttons.c
 endif
 
-ifeq ($(CONFIG_SENSORS_ZEROCROSS),y)
-CSRCS += stm32_zerocross.c
-endif
-
 ifeq ($(CONFIG_ARCH_IDLE_CUSTOM),y)
 CSRCS += stm32_idle.c
 endif
 
 ifeq ($(CONFIG_STM32_FSMC),y)
 CSRCS += stm32_extmem.c
-
-ifeq ($(CONFIG_LCD_SSD1289),y)
-CSRCS += stm32_ssd1289.c
-endif
-endif
-
-ifeq ($(CONFIG_LCD_SSD1351),y)
-CSRCS += stm32_ssd1351.c
-endif
-
-ifeq ($(CONFIG_LCD_UG2864AMBAG01),y)
-CSRCS += stm32_ug2864ambag01.c
-endif
-
-ifeq ($(CONFIG_LCD_UG2864HSWEG01),y)
-CSRCS += stm32_ug2864hsweg01.c
 endif
 
 ifeq ($(CONFIG_EXAMPLES_OSTEST),y)

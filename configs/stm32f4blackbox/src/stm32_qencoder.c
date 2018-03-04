@@ -48,7 +48,8 @@
 #include "chip.h"
 #include "up_arch.h"
 #include "stm32_qencoder.h"
-#include "stm32f4discovery.h"
+
+#include "stm32f4blackbox.h"
 
 /************************************************************************************
  * Public Functions

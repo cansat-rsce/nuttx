@@ -50,11 +50,6 @@
  ****************************************************************************/
 /* Configuration *************************************************************/
 
-/* Define what timer and channel to use as XEN1210 CLK */
-
-#define XEN1210_PWMTIMER   1
-#define XEN1210_PWMCHANNEL 1
-
 /* How many SPI modules does this chip support? */
 
 #if STM32_NSPI < 1
@@ -68,8 +63,6 @@
 #  undef CONFIG_STM32_SPI3
 #endif
 
-#define PCA9635_I2CBUS  1
-#define PCA9635_I2CADDR 0x40
 
 /* Assume that we have everything */
 
@@ -80,7 +73,7 @@
 #define HAVE_CS43L22    1
 #define HAVE_RTC_DRIVER 1
 #define HAVE_ELF        1
-#define HAVE_NETMONITOR 1
+//#define HAVE_NETMONITOR 1
 
 /* Can't support USB host or device features if USB OTG FS is not enabled */
 
@@ -149,25 +142,6 @@
 #  endif
 #endif
 
-/* The CS43L22 depends on the CS43L22 driver, I2C1, and I2S3 support */
-
-#if !defined(CONFIG_AUDIO_CS43L22) || !defined(CONFIG_STM32_I2C1) || \
-    !defined(CONFIG_STM32_I2S3)
-#  undef HAVE_CS43L22
-#endif
-
-#ifdef HAVE_CS43L22
-  /* The CS43L22 communicates on I2C1, I2C address 0x1a for control
-   * operations
-   */
-
-#  define CS43L22_I2C_BUS      1
-#  define CS43L22_I2C_ADDRESS  (0x94 >> 1)
-
-  /* The CS43L22 transfers data on I2S3 */
-
-#  define CS43L22_I2S_BUS      3
-#endif
 
 /* Check if we can support the RTC driver */
 
@@ -199,10 +173,6 @@
  * REFLCK0.
  */
 
-#ifdef CONFIG_STM32F4DISBB
-#  undef HAVE_NETMONITOR
-#endif
-
 /* procfs File System */
 
 #ifdef CONFIG_FS_PROCFS
@@ -233,12 +203,6 @@
 
 #define GPIO_BTN_USER   (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTA|GPIO_PIN0)
 
-/* ZERO CROSS pin definiton */
-
-#define GPIO_ZEROCROSS  (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTD|GPIO_PIN0)
-
-#define GPIO_CS43L22_RESET  (GPIO_OUTPUT|GPIO_SPEED_50MHz|GPIO_PORTD|GPIO_PIN4)
-
 /* PWM
  *
  * The STM32F4 Discovery has no real on-board PWM devices, but the board can be
@@ -247,25 +211,6 @@
 
 #define STM32F4DISCOVERY_PWMTIMER   4
 #define STM32F4DISCOVERY_PWMCHANNEL 2
-
-/* SPI chip selects */
-
-#define GPIO_CS_MEMS      (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
-                           GPIO_OUTPUT_SET|GPIO_PORTE|GPIO_PIN3)
-
-#define GPIO_MAX31855_CS  (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
-                           GPIO_OUTPUT_SET|GPIO_PORTD|GPIO_PIN8)
-
-#define GPIO_MAX6675_CS  (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
-                           GPIO_OUTPUT_SET|GPIO_PORTD|GPIO_PIN8)
-
-/* XEN1210 magnetic sensor */
-
-#define GPIO_XEN1210_INT (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|\
-                          GPIO_OPENDRAIN|GPIO_PORTA|GPIO_PIN5)
-
-#define GPIO_CS_XEN1210  (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
-                          GPIO_OUTPUT_SET|GPIO_PORTA|GPIO_PIN4)
 
 /* USB OTG FS
  *
@@ -289,56 +234,11 @@
                            GPIO_PUSHPULL|GPIO_PORTD|GPIO_PIN5)
 #endif
 
-/* UG-2864AMBAG01 or UG-2864HSWEG01 OLED Display (SPI 4-wire):
- *
- * --------------------------+----------------------------------------------
- * Connector CON10 J1:      | STM32F4Discovery
- * --------------+-----------+----------------------------------------------
- * CON10 J1:     | CON20 J2: | P1/P2:
- * --------------+-----------+----------------------------------------------
- * 1  3v3        | 3,4 3v3   | P2 3V
- * 3  /RESET     | 8 /RESET  | P2 PB6 (Arbitrary selection)
- * 5  /CS        | 7 /CS     | P2 PB7 (Arbitrary selection)
- * 7  A0|D/C     | 9 A0|D/C  | P2 PB8 (Arbitrary selection)
- * 9  LED+ (N/C) | -----     | -----
- * 2  5V Vcc     | 1,2 Vcc   | P2 5V
- * 4  DI         | 18 D1/SI  | P1 PA7 (GPIO_SPI1_MOSI == GPIO_SPI1_MOSI_1 (1))
- * 6  SCLK       | 19 D0/SCL | P1 PA5 (GPIO_SPI1_SCK == GPIO_SPI1_SCK_1 (1))
- * 8  LED- (N/C) | -----     | ------
- * 10 GND        | 20 GND    | P2 GND
- * --------------+-----------+----------------------------------------------
- * (1) Required because of on-board MEMS
- * -------------------------------------------------------------------------
- */
-
-#if defined(CONFIG_LCD_UG2864AMBAG01) || defined(CONFIG_LCD_UG2864HSWEG01) || \
-    defined(CONFIG_LCD_SSD1351)
-#  define GPIO_OLED_RESET (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
-                           GPIO_OUTPUT_CLEAR|GPIO_PORTB|GPIO_PIN6)
-#  define GPIO_OLED_CS    (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
-                           GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN7)
-#  define GPIO_OLED_A0    (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
-                           GPIO_OUTPUT_CLEAR|GPIO_PORTB|GPIO_PIN8)
-#  define GPIO_OLED_DC    GPIO_OLED_A0
-#endif
-
-/* Display JLX12864G */
-
-#define STM32_LCD_RST   (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
-                           GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN6)
-
-#define STM32_LCD_CS    (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
-                           GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN7)
-
-#define STM32_LCD_RS    (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
-                           GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN8)
-
-/* STM32F4DIS-BB MicroSD
+/* STM32F4BLACKBOX MicroSD SDIO
  *
  * ---------- ------------- ------------------------------
  * PIO        SIGNAL        Comments
  * ---------- ------------- ------------------------------
- * PB15       NCD           Pulled up externally
  * PC9        DAT1          Configured by driver
  * PC8        DAT0          "        " "" "    "
  * PC12       CLK           "        " "" "    "
@@ -347,36 +247,6 @@
  * PC10       DAT2          "        " "" "    "
  * ---------- ------------- ------------------------------
  */
-
-#if defined(CONFIG_STM32F4DISBB) && defined(CONFIG_STM32_SDIO)
-#  define GPIO_SDIO_NCD   (GPIO_INPUT|GPIO_FLOAT|GPIO_EXTI|\
-                           GPIO_PORTB|GPIO_PIN15)
-#endif
-
-/* STM32F4DIS-BB LAN8720
- *
- * ---------- ------------- ------------------------------
- * PIO        SIGNAL        Comments
- * ---------- ------------- ------------------------------
- * PB11       TXEN           Configured by driver
- * PB12       TXD0          "        " "" "    "
- * PB13       TXD1          "        " "" "    "
- * PC4        RXD0/MODE0    "        " "" "    "
- * PC5        RXD1/MODE1    "        " "" "    "
- * PA7        CRS_DIV/MODE2 "        " "" "    "
- * PA2        MDIO          "        " "" "    "
- * PC1        MDC           "        " "" "    "
- * PA1        NINT/REFCLK0  "        " "" "    "
- * PE2        DAT2          "        " "" "    "
- * ---------- ------------- ------------------------------
- */
-
-#if defined(CONFIG_STM32F4DISBB) && defined(CONFIG_STM32_ETHMAC)
-#  define GPIO_EMAC_NINT  (GPIO_INPUT|GPIO_PULLUP|GPIO_EXTI|\
-                           GPIO_PORTA|GPIO_PIN1)
-#  define GPIO_EMAC_NRST  (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
-                           GPIO_OUTPUT_SET|GPIO_PORTE|GPIO_PIN2)
-#endif
 
 /****************************************************************************
  * Public Types

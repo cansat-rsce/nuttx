@@ -52,7 +52,7 @@
 #include "nvic.h"
 #include "stm32_pwr.h"
 #include "stm32_pm.h"
-#include "stm32f4discovery.h"
+#include "stm32f4blackbox.h"
 
 #if defined(CONFIG_PM) && defined(CONFIG_ARCH_IDLE_CUSTOM) && defined(CONFIG_PM_BUTTONS)
 
