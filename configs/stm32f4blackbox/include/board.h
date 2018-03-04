@@ -198,41 +198,35 @@
 
 #define BOARD_LED1        0
 #define BOARD_LED2        1
-#define BOARD_LED3        2
-#define BOARD_LED4        3
-#define BOARD_NLEDS       4
-
-#define BOARD_LED_GREEN   BOARD_LED1
-#define BOARD_LED_ORANGE  BOARD_LED2
-#define BOARD_LED_RED     BOARD_LED3
-#define BOARD_LED_BLUE    BOARD_LED4
+#define BOARD_NLEDS       2
 
 /* LED bits for use with board_userled_all() */
 
 #define BOARD_LED1_BIT    (1 << BOARD_LED1)
 #define BOARD_LED2_BIT    (1 << BOARD_LED2)
-#define BOARD_LED3_BIT    (1 << BOARD_LED3)
-#define BOARD_LED4_BIT    (1 << BOARD_LED4)
 
-/* If CONFIG_ARCH_LEDs is defined, then NuttX will control the 4 LEDs on board the
- * stm32f4discovery.  The following definitions describe how NuttX controls the LEDs:
+/* If CONFIG_ARCH_LEDs is defined, then NuttX will control the 2 LEDs on board the
+ * stm32f4blackbox.  The following definitions describe how NuttX controls the LEDs:
  */
-
-#define LED_STARTED       0  /* LED1 */
-#define LED_HEAPALLOCATE  1  /* LED2 */
-#define LED_IRQSENABLED   2  /* LED1 + LED2 */
-#define LED_STACKCREATED  3  /* LED3 */
-#define LED_INIRQ         4  /* LED1 + LED3 */
-#define LED_SIGNAL        5  /* LED2 + LED3 */
-#define LED_ASSERTION     6  /* LED1 + LED2 + LED3 */
-#define LED_PANIC         7  /* N/C  + N/C  + N/C + LED4 */
+/*
+#define LED_STARTED       0  /* LED1 * /
+#define LED_HEAPALLOCATE  1  /* LED2 * /
+#define LED_IRQSENABLED   2  /* LED1 + LED2 * /
+#define LED_STACKCREATED  3  /* LED3 * /
+#define LED_INIRQ         4  /* LED1 + LED3 * /
+#define LED_SIGNAL        5  /* LED2 + LED3 * /
+#define LED_ASSERTION     6  /* LED1 + LED2 + LED3 * /
+#define LED_PANIC         7  /* N/C  + N/C  + N/C + LED4 * /
+*/
 
 /* Button definitions ***************************************************************/
-/* The STM32F4 Discovery supports one button: */
+/* The STM32F4 blackbox supports two buttons: */
 
-#define BUTTON_USER        0
-#define NUM_BUTTONS        1
-#define BUTTON_USER_BIT    (1 << BUTTON_USER)
+#define BUTTON_USER_1        0
+#define BUTTON_USER_2        1
+#define NUM_BUTTONS          2
+#define BUTTON_USER_1_BIT    (1 << BUTTON_USER_1)
+#define BUTTON_USER_2_BIT    (1 << BUTTON_USER_2)
 
 /* Alternate function pin selections ************************************************/
 /* CAN */
@@ -255,22 +249,27 @@
 #define GPIO_USART1_TX GPIO_USART1_TX_1
 
 
-/* UART2:
- */
+/* UART2: */
 
 #define GPIO_USART2_RX GPIO_USART2_RX_1
 #define GPIO_USART2_TX GPIO_USART2_TX_1
 
-/* UART3: (Used in pseudoterm configuration) */
+/* UART3: */
 
 #define GPIO_USART3_TX GPIO_USART3_TX_1
 #define GPIO_USART3_RX GPIO_USART3_RX_1
 
-/* UART6:
- *
- * The STM32F4DIS-BB base board provides RS-232 drivers and a DB9 connector
- * for USART6.  This is the preferred serial console for use with the STM32F4DIS-BB.
- */
+/* UART4: */
+
+#define GPIO_USART4_TX GPIO_USART4_TX_1
+#define GPIO_USART4_RX GPIO_USART4_RX_1
+
+/* UART5: */
+
+#define GPIO_USART5_TX GPIO_USART5_TX_1
+#define GPIO_USART5_RX GPIO_USART5_RX_1
+
+/* UART6: */
 
 #define GPIO_USART6_RX GPIO_USART6_RX_1
 #define GPIO_USART6_TX GPIO_USART6_TX_1
@@ -283,39 +282,20 @@
 
 #define GPIO_TIM4_CH2OUT GPIO_TIM4_CH2OUT_2
 
-/* RGB LED
- *
- * R = TIM1 CH1 on PE9 | G = TIM2 CH2 on PA1 | B = TIM3 CH3 on PB0
- */
-
-#define GPIO_TIM1_CH1OUT GPIO_TIM1_CH1OUT_2
-#define GPIO_TIM2_CH2OUT GPIO_TIM2_CH2OUT_1
-#define GPIO_TIM3_CH3OUT GPIO_TIM3_CH3OUT_1
-
-/* SPI - There is a MEMS device on SPI1 using these pins: */
+/* SPI1 - There is W25Q16 flash chip on SPI1 and pinout  for NRF24L01+ */
 
 #define GPIO_SPI1_MISO   GPIO_SPI1_MISO_1
 #define GPIO_SPI1_MOSI   GPIO_SPI1_MOSI_1
 #define GPIO_SPI1_SCK    GPIO_SPI1_SCK_1
 
-/* SPI2 - Test MAX31855 on SPI2 PB10 = SCK, PB14 = MISO */
-
+/* SPI2 */
+/*
 #define GPIO_SPI2_MISO   GPIO_SPI2_MISO_1
 #define GPIO_SPI2_MOSI   GPIO_SPI2_MOSI_1
 #define GPIO_SPI2_SCK    GPIO_SPI2_SCK_1
+*/
 
-/* I2S3 - CS43L22 configuration uses I2S3 */
-
-#define GPIO_I2S3_SD     GPIO_I2S3_SD_2
-#define GPIO_I2S3_CK     GPIO_I2S3_CK_2
-#define GPIO_I2S3_WS     GPIO_I2S3_WS_1
-
-#define DMACHAN_I2S3_RX  DMAMAP_SPI3_RX_2
-#define DMACHAN_I2S3_TX  DMAMAP_SPI3_TX_2
-
-/* I2C.  Only I2C1 is available on the stm32f4discovery.  I2C1_SCL and I2C1_SDA are
- * available on the following pins:
- *
+/* I2C1
  * - PB6  is I2C1_SCL
  * - PB9  is I2C1_SDA
  */
@@ -343,3 +323,4 @@
 #define DMAMAP_SDIO DMAMAP_SDIO_1
 
 #endif  /* __CONFIG_STM32F4DISCOVERY_INCLUDE_BOARD_H */
+

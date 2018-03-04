@@ -63,7 +63,7 @@
 
 static uint32_t g_ledcfg[BOARD_NLEDS] =
 {
-  GPIO_LED1, GPIO_LED2, GPIO_LED3, GPIO_LED4
+  GPIO_LED1, GPIO_LED2
 };
 
 /****************************************************************************
@@ -187,8 +187,6 @@ void board_userled_initialize(void)
 
    stm32_configgpio(GPIO_LED1);
    stm32_configgpio(GPIO_LED2);
-   stm32_configgpio(GPIO_LED3);
-   stm32_configgpio(GPIO_LED4);
 }
 
 /****************************************************************************
@@ -209,10 +207,8 @@ void board_userled(int led, bool ledon)
 
 void board_userled_all(uint8_t ledset)
 {
-  stm32_gpiowrite(GPIO_LED1, (ledset & BOARD_LED1_BIT) == 0);
-  stm32_gpiowrite(GPIO_LED2, (ledset & BOARD_LED2_BIT) == 0);
-  stm32_gpiowrite(GPIO_LED3, (ledset & BOARD_LED3_BIT) == 0);
-  stm32_gpiowrite(GPIO_LED4, (ledset & BOARD_LED4_BIT) == 0);
+    stm32_gpiowrite(GPIO_LED1, (ledset & BOARD_LED1_BIT) == 0);
+    stm32_gpiowrite(GPIO_LED2, (ledset & BOARD_LED2_BIT) == 0);
 }
 
 /****************************************************************************

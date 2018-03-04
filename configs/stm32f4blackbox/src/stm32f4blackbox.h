@@ -183,17 +183,13 @@
 #  endif
 #endif
 
-/* STM32F4 Discovery GPIOs **************************************************/
+/* STM32F4 black box GPIOs **************************************************/
 /* LEDs */
 
-#define GPIO_LED1       (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
-                         GPIO_OUTPUT_CLEAR|GPIO_PORTD|GPIO_PIN12)
-#define GPIO_LED2       (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
-                         GPIO_OUTPUT_CLEAR|GPIO_PORTD|GPIO_PIN13)
-#define GPIO_LED3       (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
-                         GPIO_OUTPUT_CLEAR|GPIO_PORTD|GPIO_PIN14)
-#define GPIO_LED4       (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
-                         GPIO_OUTPUT_CLEAR|GPIO_PORTD|GPIO_PIN15)
+#define GPIO_LED1       (GPIO_OUTPUT|GPIO_OPENDRAIN|GPIO_SPEED_50MHz|\
+                         GPIO_OUTPUT_SET|GPIO_PORTF|GPIO_PIN9)
+#define GPIO_LED2       (GPIO_OUTPUT|GPIO_OPENDRAIN|GPIO_SPEED_50MHz|\
+                         GPIO_OUTPUT_SET|GPIO_PORTF|GPIO_PIN10)
 
 /* BUTTONS -- NOTE that all have EXTI interrupts configured */
 
