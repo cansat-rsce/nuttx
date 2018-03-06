@@ -197,7 +197,7 @@ void board_userled(int led, bool ledon)
 {
   if ((unsigned)led < BOARD_NLEDS)
     {
-      stm32_gpiowrite(g_ledcfg[led], ledon);
+      stm32_gpiowrite(g_ledcfg[led], !ledon);
     }
 }
 
