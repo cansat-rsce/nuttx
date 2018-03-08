@@ -139,6 +139,19 @@
 #define GPIO_LED1       (GPIO_OUTPUT|GPIO_OPENDRAIN|GPIO_SPEED_50MHz|\
                          GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN5)
 
+/* SPI chip selects */
+
+// TODO
+//#define GPIO_NRF24L01_CS
+
+// sd card cs pin
+#define GPIO_SDCARD_CS    (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
+                           GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN12)
+
+// sd card detect pin
+#define GPIO_SDCARD_DETECT  (GPIO_INPUT|GPIO_SPEED_50MHz|GPIO_FLOAT|GPIO_EXTI|GPIO_PORTB|GPIO_PIN7)
+
+
 ///* PWM
 // *
 // * The STM32F4 Discovery has no real on-board PWM devices, but the board can be

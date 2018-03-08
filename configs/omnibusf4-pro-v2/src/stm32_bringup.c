@@ -62,21 +62,16 @@
 #  include <nuttx/leds/userled.h>
 #endif
 
-#ifdef CONFIG_RNDIS
-#  include <nuttx/usb/rndis.h>
+/* Checking needed by MMC/SDCard */
+
+#ifdef CONFIG_NSH_MMCSDMINOR
+#  define MMCSD_MINOR CONFIG_NSH_MMCSDMINOR
+#else
+#  define MMCSD_MINOR 0
 #endif
 
 #include "omnibus4prov2.h"
 
-/* Conditional logic in stm32f4discovery.h will determine if certain features
- * are supported.  Tests for these features need to be made after including
- * stm32f4discovery.h.
- */
-
-#ifdef HAVE_RTC_DRIVER
-#  include <nuttx/timers/rtc.h>
-#  include "stm32_rtc.h"
-#endif
 
 /****************************************************************************
  * Public Functions
@@ -98,27 +93,7 @@
 
 int stm32_bringup(void)
 {
-#ifdef HAVE_RTC_DRIVER
-  FAR struct rtc_lowerhalf_s *lower;
-#endif
   int ret = OK;
-
-#ifdef CONFIG_RGBLED
-  /* Configure the RGB LED driver */
-
-  stm32_rgbled_setup();
-#endif
-
-#ifdef HAVE_SDIO
-  /* Initialize the SDIO block driver */
-
-  ret = stm32_sdio_initialize();
-  if (ret != OK)
-    {
-      ferr("ERROR: Failed to initialize MMC/SD driver: %d\n", ret);
-      return ret;
-    }
-#endif
 
 #ifdef HAVE_USBHOST
   /* Initialize USB host operation.  stm32_usbhost_initialize() starts a thread
@@ -154,39 +129,6 @@ int stm32_bringup(void)
     }
 #endif
 
-#ifdef CONFIG_CAN
-  /* Initialize CAN and register the CAN driver. */
-
-  ret = stm32_can_setup();
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "ERROR: stm32_can_setup failed: %d\n", ret);
-    }
-#endif
-
-#ifdef CONFIG_BUTTONS
-  /* Register the BUTTON driver */
-
-  ret = btn_lower_initialize("/dev/buttons");
-  if (ret < 0)
-    {
-      syslog(LOG_ERR, "ERROR: btn_lower_initialize() failed: %d\n", ret);
-    }
-#endif
-
-#ifdef CONFIG_SENSORS_QENCODER
-  /* Initialize and register the qencoder driver */
-
-  ret = stm32_qencoder_initialize("/dev/qe0", CONFIG_STM32F4DISCO_QETIMER);
-  if (ret != OK)
-    {
-      syslog(LOG_ERR,
-             "ERROR: Failed to register the qencoder: %d\n",
-             ret);
-      return ret;
-    }
-#endif
-
 #ifdef CONFIG_USERLED
   /* Register the LED driver */
 
@@ -194,30 +136,6 @@ int stm32_bringup(void)
   if (ret < 0)
     {
       syslog(LOG_ERR, "ERROR: userled_lower_initialize() failed: %d\n", ret);
-    }
-#endif
-
-#ifdef HAVE_RTC_DRIVER
-  /* Instantiate the STM32 lower-half RTC driver */
-
-  lower = stm32_rtc_lowerhalf();
-  if (!lower)
-    {
-      serr("ERROR: Failed to instantiate the RTC lower-half driver\n");
-      return -ENOMEM;
-    }
-  else
-    {
-      /* Bind the lower half driver and register the combined RTC driver
-       * as /dev/rtc0
-       */
-
-      ret = rtc_initialize(0, lower);
-      if (ret < 0)
-        {
-          serr("ERROR: Failed to bind/register the RTC driver: %d\n", ret);
-          return ret;
-        }
     }
 #endif
 
@@ -239,6 +157,15 @@ int stm32_bringup(void)
     {
       serr("ERROR: Failed to mount procfs at %s: %d\n",
            STM32_PROCFS_MOUNTPOINT, ret);
+    }
+#endif
+
+#ifdef CONFIG_MMCSD
+  ret = stm32_mmcsd_initialize(MMCSD_MINOR);
+  if (ret < 0)
+    {
+      syslog(LOG_ERR, "Failed to initialize SD slot %d: %d\n", ret);
+      return ret;
     }
 #endif
 
