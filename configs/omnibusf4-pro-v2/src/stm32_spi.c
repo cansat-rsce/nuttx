@@ -143,7 +143,9 @@ uint8_t stm32_spi2status(FAR struct spi_dev_s *dev, uint32_t devid)
 #ifdef CONFIG_STM32_SPI3
 void stm32_spi3select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
 {
-  spiinfo("devid: %d CS: %s\n", (int)devid, selected ? "assert" : "de-assert");
+	spiinfo("devid: %d CS: %s\n", (int)devid, selected ? "assert" : "de-assert");
+
+	if( devid == SPIDEV_BAROMETER(0) ) stm32_gpiowrite(GPIO_SDCARD_CS, !selected);
 }
 
 uint8_t stm32_spi3status(FAR struct spi_dev_s *dev, uint32_t devid)

@@ -48,6 +48,13 @@ config SENSORS_BMP180
 	select I2C
 	---help---
 		Enable driver support for the Bosch BMP180 barometer sensor.
+		
+config SENSORS_BMP280
+	bool "Bosch BMP280 Barometer Sensor support"
+	default n
+	select SPI
+	---help---
+		Enable driver support for the Bosch BMP280 barometer sensor.
 
 config SENSORS_HCSR04
 	bool "HC-SR04 Distance Measurement Sensor"

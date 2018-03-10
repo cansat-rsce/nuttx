@@ -142,6 +142,10 @@ ifeq ($(CONFIG_ADXL345_SPI),y)
   CSRCS += adxl345_spi.c
 endif
 
+ifeq ($(CONFIG_BMP280),y)
+  CSRCS += bmp280.c
+endif
+
 ifeq ($(CONFIG_LIS3DSH),y)
   CSRCS += lis3dsh.c
 endif

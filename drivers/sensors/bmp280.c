@@ -52,8 +52,8 @@
 #include <nuttx/kmalloc.h>
 #include <nuttx/signal.h>
 #include <nuttx/fs/fs.h>
-#include <nuttx/i2c/i2c_master.h>
-#include <nuttx/sensors/bmp180.h>
+#include <nuttx/spi/spi.h>
+#include <nuttx/sensors/bmp280.h>
 #include <nuttx/random.h>
 
 #if defined(CONFIG_SPI) && defined(CONFIG_SENSORS_BMP280)
@@ -62,7 +62,6 @@
  * Pre-processor Definitions
  ****************************************************************************/
 
-#define BMP280_FREQ         100000
 #define DEVID               0x58
 
 #define BMP280_T1_MSB		0x88
@@ -101,76 +100,69 @@
 #define BMP280_TEMP_LSB		0xFB
 #define BMP280_TEMP_XLSB	0xFC
 
-#define BMP180_READ_TEMP    0x2e
-#define BMP180_READ_PRESS   0x34
+#define READADDR(ADDR)		( ADDR | (1 << 7) )
+#define WRITEADDR(ADDR)		( ADDR )
 
-#define BMP280_NOOVERSAMPLE 0x00
-#define BMP280_OVERSAMPLE2X 0x70
-#define BMP180_OVERSAMPLE4X 0xb0
-#define BMP180_OVERSAMPLE8X 0xc0
-
-/* Current Oversampling */
-
-#define CURRENT_OSS         (BMP180_OVERSAMPLE8X)
+#define FORM_CTRL_MEAS(MODE, OS_P, OS_T)	(uint8_t)( MODE | ( OS_P << 2 ) | ( OS_T << 5 ) )
+#define FORM_CONFIG(STANDBYTIME, FILTER)	(uint8_t)( ( STANDBYTIME << 5 ) | ( FILTER << 2 ) )
 
 /****************************************************************************
  * Private Type Definitions
  ****************************************************************************/
 
-struct bmp180_dev_s
+//FIXME тут, наверное, нужно выравнивание структур отключить?
+typedef struct {
+	uint16_t T1;
+	int16_t T2, T3;
+	uint16_t P1;
+	int16_t P2, P3, P4, P5, P6, P7, P8, P9;
+} bmp280_calibration_values_t;
+
+typedef struct bmp280_dev_s
 {
-  FAR struct i2c_master_s *i2c; /* I2C interface */
-  uint8_t addr;                 /* BMP180 I2C address */
-  int freq;                     /* BMP180 Frequency <= 3.4MHz */
-  uint16_t bmp180_dig_T1;       /* Calibration coefficients */
-  int16_t bmp180_dig_T2;
-  int16_t bmp180_dig_T3;
-  uint16_t bmp180_dig_P1;
-  int16_t bmp180_dig_P2;
-  int16_t bmp180_dig_P3;
-  int16_t bmp180_dig_P4;
-  int16_t bmp180_dig_P5;
-  int16_t bmp180_dig_P6;
-  int16_t bmp180_dig_P7;
-  int16_t bmp180_dig_P8;
-  int16_t bmp180_dig_P9;
-  int32_t bmp180_utemp;         /* Uncompensated temperature read from BMP180 */
-  int32_t bmp180_upress;        /* Uncompensated pressue read from BMP180 */
-};
+	FAR struct spi_dev_s *spi; 		/* SPI interface */
+	int devnum;						/* Number of /dev/baroN */
+	bmp280_calibration_values_t calvals;
+	bool calvals_correct;
+	bmp280_parameters_t params;
+} bmp280_t;
 
 /****************************************************************************
  * Private Function Prototypes
  ****************************************************************************/
 
-static uint8_t bmp180_getreg8(FAR struct bmp180_dev_s *priv, uint8_t regaddr);
-static uint16_t bmp180_getreg16(FAR struct bmp180_dev_s *priv, uint8_t regaddr);
-static void bmp180_putreg8(FAR struct bmp180_dev_s *priv, uint8_t regaddr,
-                           uint8_t regval);
-static void bmp180_updatecaldata(FAR struct bmp180_dev_s *priv);
-static void bmp180_read_press_temp(FAR struct bmp180_dev_s *priv);
-static int bmp180_getpressure(FAR struct bmp180_dev_s *priv);
+static inline void _configspi(FAR struct spi_dev_s *spi);
+static uint8_t _getreg8(FAR bmp280_t *priv, uint8_t regaddr);
+static uint16_t _getreg16(FAR bmp280_t *priv, uint8_t regaddr);
+static void _getregmany(FAR bmp280_t *priv, uint8_t regaddr, size_t count, FAR void * buffer);
+static void _putreg8(FAR bmp280_t *priv, uint8_t regaddr, uint8_t regval);
+static void _updatecaldata(FAR bmp280_t *priv);
+static bmp280_data_raw_t _read_raw(FAR bmp280_t *priv);
+static bmp280_data_t _recalc(FAR bmp280_calibration_values_t * calvals, bmp280_data_raw_t rawdata);
 
 /* Character driver methods */
 
-static int bmp180_open(FAR struct file *filep);
-static int bmp180_close(FAR struct file *filep);
-static ssize_t bmp180_read(FAR struct file *filep, FAR char *buffer,
+static int _open(FAR struct file *filep);
+static int _close(FAR struct file *filep);
+static ssize_t _read(FAR struct file *filep, FAR char *buffer,
                            size_t buflen);
-static ssize_t bmp180_write(FAR struct file *filep, FAR const char *buffer,
+static ssize_t _write(FAR struct file *filep, FAR const char *buffer,
                             size_t buflen);
+static int _ioctl(FAR struct file* filep, int cmd, unsigned long arg);
+
 
 /****************************************************************************
  * Private Data
  ****************************************************************************/
 
-static const struct file_operations g_bmp180fops =
+static const struct file_operations g_bmp280fops =
 {
-  bmp180_open,                  /* open */
-  bmp180_close,                 /* close */
-  bmp180_read,                  /* read */
-  bmp180_write,                 /* write */
+  _open,                  		/* open */
+  _close,                 		/* close */
+  _read,                  		/* read */
+  _write,                 		/* write */
   0,                            /* seek */
-  0,                            /* ioctl */
+  _ioctl,                            /* ioctl */
 #ifndef CONFIG_DISABLE_POLL
   0,                            /* poll */
 #endif
@@ -182,146 +174,174 @@ static const struct file_operations g_bmp180fops =
  ****************************************************************************/
 
 /****************************************************************************
- * Name: bmp180_getreg8
+ * Name: _configspi
  *
  * Description:
- *   Read from an 8-bit BMP180 register
  *
  ****************************************************************************/
 
-static uint8_t bmp180_getreg8(FAR struct bmp180_dev_s *priv, uint8_t regaddr)
+static inline void _configspi(FAR struct spi_dev_s *spi)
 {
-  struct i2c_config_s config;
-  uint8_t regval = 0;
-  int ret;
+  /* Configure SPI for the BMP280 */
 
-  /* Set up the I2C configuration */
+  SPI_SETMODE(spi, SPIDEV_MODE0);
+  SPI_SETBITS(spi, 8);
+  (void)SPI_HWFEATURES(spi, 0);
+  (void)SPI_SETFREQUENCY(spi, BMP280_FREQ);
+}
 
-  config.frequency = priv->freq;
-  config.address   = priv->addr;
-  config.addrlen   = 7;
+/****************************************************************************
+ * Name: _getreg8
+ *
+ * Description:
+ *   Read from an 8-bit BMP280 register
+ *
+ ****************************************************************************/
 
-  /* Write the register address */
+static uint8_t _getreg8(FAR bmp280_t *priv, uint8_t regaddr)
+{
+  uint8_t regval;
 
-  ret = i2c_write(priv->i2c, &config, &regaddr, 1);
-  if (ret < 0)
-    {
-      snerr("ERROR: i2c_write failed: %d\n", ret);
-      return ret;
-    }
+  /* If SPI bus is shared then lock and configure it */
 
-  /* Read the register value */
+  (void)SPI_LOCK(priv->spi, true);
+  _configspi(priv->spi);
 
-  ret = i2c_read(priv->i2c, &config, &regval, 1);
-  if (ret < 0)
-    {
-      snerr("ERROR: i2c_read failed: %d\n", ret);
-      return ret;
-    }
+  /* Select the BMP280 */
+
+  SPI_SELECT(priv->spi, SPIDEV_BAROMETER(priv->devnum), true);
+
+  /* Send register to read and get the next byte */
+
+  (void)SPI_SEND(priv->spi, READADDR( regaddr ));
+  SPI_RECVBLOCK(priv->spi, &regval, 1);
+
+  /* Deselect the BMP280 */
+
+  SPI_SELECT(priv->spi, SPIDEV_BAROMETER(priv->devnum), false);
+
+  /* Unlock bus */
+
+  (void)SPI_LOCK(priv->spi, false);
 
   return regval;
 }
 
 /****************************************************************************
- * Name: bmp180_getreg16
+ * Name: _getreg16
  *
  * Description:
- *   Read two 8-bit from a BMP180 register
+ *   Read two 8-bit from a BMP280 register
  *
  ****************************************************************************/
-
-static uint16_t bmp180_getreg16(FAR struct bmp180_dev_s *priv, uint8_t regaddr)
+static uint16_t _getreg16(FAR bmp280_t *priv, uint8_t regaddr)
 {
-  struct i2c_config_s config;
-  uint16_t msb, lsb;
-  uint16_t regval = 0;
-  int ret;
+  uint16_t regval;
 
-  /* Set up the I2C configuration */
+  /* If SPI bus is shared then lock and configure it */
 
-  config.frequency = priv->freq;
-  config.address   = priv->addr;
-  config.addrlen   = 7;
+  (void)SPI_LOCK(priv->spi, true);
+  _configspi(priv->spi);
 
-  /* Register to read */
+  /* Select the BMP280 */
 
-  ret = i2c_write(priv->i2c, &config, &regaddr, 1);
-  if (ret < 0)
-    {
-      snerr("ERROR: i2c_write failed: %d\n", ret);
-      return ret;
-    }
+  SPI_SELECT(priv->spi, SPIDEVTYPE_BAROMETER(priv->devnum), true);
 
-  /* Read register */
+  /* Send register to read and get the next 2 bytes */
 
-  ret = i2c_read(priv->i2c, &config, (uint8_t *)&regval, 2);
-  if (ret < 0)
-    {
-      snerr("ERROR: i2c_read failed: %d\n", ret);
-      return ret;
-    }
+  (void)SPI_SEND(priv->spi, READADDR( regaddr ));
+  SPI_RECVBLOCK(priv->spi, &regval, 2);
 
-  /* MSB and LSB are inverted */
+  /* Deselect the BMP280 */
 
-  msb = (regval & 0xFF);
-  lsb = (regval & 0xFF00) >> 8;
+  SPI_SELECT(priv->spi, SPIDEV_BAROMETER(priv->devnum), false);
 
-  regval = (msb << 8) | lsb;
+  /* Unlock bus */
+
+  (void)SPI_LOCK(priv->spi, false);
 
   return regval;
 }
 
 /****************************************************************************
- * Name: bmp180_putreg8
+ * Name: _getregmany
  *
  * Description:
- *   Write to an 8-bit BMP180 register
+ *   Read many 8-bit from a BMP280 register
  *
  ****************************************************************************/
-
-static void bmp180_putreg8(FAR struct bmp180_dev_s *priv, uint8_t regaddr,
-                           uint8_t regval)
+static void _getregmany(FAR bmp280_t *priv, uint8_t regaddr, size_t count, FAR void * buffer)
 {
-  struct i2c_config_s config;
-  uint8_t data[2];
-  int ret;
+  /* If SPI bus is shared then lock and configure it */
 
-  /* Set up the I2C configuration */
+  (void)SPI_LOCK(priv->spi, true);
+  _configspi(priv->spi);
 
-  config.frequency = priv->freq;
-  config.address   = priv->addr;
-  config.addrlen   = 7;
+  /* Select the BMP280 */
 
-  data[0] = regaddr;
-  data[1] = regval;
+  SPI_SELECT(priv->spi, SPIDEVTYPE_BAROMETER(priv->devnum), true);
 
-  /* Write the register address and value */
+  /* Send register to read and get the next 2 bytes */
 
-  ret = i2c_write(priv->i2c, &config, (uint8_t *) &data, 2);
-  if (ret < 0)
-    {
-      snerr("ERROR: i2c_write failed: %d\n", ret);
-      return;
-    }
+  (void)SPI_SEND(priv->spi, READADDR( regaddr ));
+  SPI_RECVBLOCK(priv->spi, buffer, count);
 
-  return;
+  /* Deselect the BMP280 */
+
+  SPI_SELECT(priv->spi, SPIDEV_BAROMETER(priv->devnum), false);
+
+  /* Unlock bus */
+
+  (void)SPI_LOCK(priv->spi, false);
 }
 
 /****************************************************************************
- * Name: bmp180_checkid
+ * Name: _putreg8
  *
  * Description:
- *   Read and verify the BMP180 chip ID
+ *   Write to an 8-bit BMP280 register
+ *
+ ****************************************************************************/
+static void _putreg8(FAR bmp280_t *priv, uint8_t regaddr, uint8_t regval)
+{
+  /* If SPI bus is shared then lock and configure it */
+
+  (void)SPI_LOCK(priv->spi, true);
+  _configspi(priv->spi);
+
+  /* Select the BMP280 */
+
+  SPI_SELECT(priv->spi, SPIDEV_BAROMETER(priv->devnum), true);
+
+  /* Send register address and set the value */
+
+  (void)SPI_SEND(priv->spi, WRITEADDR( regaddr ));
+  (void)SPI_SEND(priv->spi, regval);
+
+  /* Deselect the BMP280 */
+
+  SPI_SELECT(priv->spi, SPIDEV_BAROMETER(priv->devnum), false);
+
+  /* Unlock bus */
+
+  (void)SPI_LOCK(priv->spi, false);
+}
+
+/****************************************************************************
+ * Name: _checkid
+ *
+ * Description:
+ *   Read and verify the BMP280 chip ID
  *
  ****************************************************************************/
 
-static int bmp180_checkid(FAR struct bmp180_dev_s *priv)
+static int _checkid(FAR bmp280_t *priv)
 {
   uint8_t devid = 0;
 
   /* Read device ID */
 
-  devid = bmp180_getreg8(priv, BMP180_DEVID);
+  devid = _getreg8(priv, BMP280_DEVID);
   sninfo("devid: 0x%02x\n", devid);
 
   if (devid != (uint16_t)DEVID)
@@ -336,252 +356,236 @@ static int bmp180_checkid(FAR struct bmp180_dev_s *priv)
 }
 
 /****************************************************************************
- * Name: bmp180_updatecaldata
+ * Name: _updatecaldata
  *
  * Description:
  *   Update Calibration Coefficient Data
  *
  ****************************************************************************/
 
-static void bmp180_updatecaldata(FAR struct bmp180_dev_s *priv)
+static inline void _updatecaldata(FAR bmp280_t *priv)
 {
-  /* AC1 */
+	bmp280_calibration_values_t * calvals = &priv->calvals;
 
-  priv->bmp180_cal_ac1 = (int16_t) bmp180_getreg16(priv, BMP180_AC1_MSB);
+	_getregmany(priv, BMP280_T1_MSB, sizeof(&calvals), calvals);
 
-  /* AC2 */
+	if(	!calvals->T1 || !calvals->T2 ||
+		!calvals->T3 || !calvals->P1 ||
+		!calvals->P2 || !calvals->P3 ||
+		!calvals->P4 || !calvals->P5 ||
+		!calvals->P6 || !calvals->P7 ||
+		!calvals->P8 || !calvals->P9 )
+		priv->calvals_correct = false;
 
-  priv->bmp180_cal_ac2 = (int16_t) bmp180_getreg16(priv, BMP180_AC2_MSB);
-
-  /* AC3 */
-
-  priv->bmp180_cal_ac3 = (int16_t) bmp180_getreg16(priv, BMP180_AC3_MSB);
-
-  /* AC4 */
-
-  priv->bmp180_cal_ac4 = bmp180_getreg16(priv, BMP180_AC4_MSB);
-
-  /* AC5 */
-
-  priv->bmp180_cal_ac5 = bmp180_getreg16(priv, BMP180_AC5_MSB);
-
-  /* AC6 */
-
-  priv->bmp180_cal_ac6 = bmp180_getreg16(priv, BMP180_AC6_MSB);
-
-  /* B1 */
-
-  priv->bmp180_cal_b1 = (int16_t) bmp180_getreg16(priv, BMP180_B1_MSB);
-
-  /* B2 */
-
-  priv->bmp180_cal_b2 = (int16_t) bmp180_getreg16(priv, BMP180_B2_MSB);
-
-  /* MB */
-
-  priv->bmp180_cal_mb = (int16_t) bmp180_getreg16(priv, BMP180_MB_MSB);
-
-  /* MC */
-
-  priv->bmp180_cal_mc = (int16_t) bmp180_getreg16(priv, BMP180_MC_MSB);
-
-  /* MD */
-
-  priv->bmp180_cal_md = (int16_t) bmp180_getreg16(priv, BMP180_MD_MSB);
+	else priv->calvals_correct = true;
 }
 
 /****************************************************************************
- * Name: bmp180_read_press_temp
+ * Name: _updateparams
  *
  * Description:
- *   Read raw pressure and temperature from BMP180 and store it in the
- *   bmp180_dev_s structure.
+ *   Update Calibration Coefficient Data
  *
  ****************************************************************************/
 
-static void bmp180_read_press_temp(FAR struct bmp180_dev_s *priv)
-{
-  uint8_t oss = CURRENT_OSS;
+static inline void _updateparams(FAR bmp280_t *priv) {
+	FAR bmp280_parameters_t * params = &( priv->params );
 
-  /* Issue a read temperature command */
+	uint8_t tmp = FORM_CTRL_MEAS(	params->mode,
+									params->pressure_oversampling,
+									params->temperature_oversampling );
+	_putreg8(priv, BMP280_CTRL_MEAS, tmp);
 
-  bmp180_putreg8(priv, BMP180_CTRL_MEAS, BMP180_READ_TEMP);
-
-  /* Wait 5ms */
-
-  nxsig_usleep(5000);
-
-  /* Read temperature */
-
-  priv->bmp180_utemp = bmp180_getreg16(priv, BMP180_ADC_OUT_MSB);
-
-  /* Issue a read pressure command */
-
-  bmp180_putreg8(priv, BMP180_CTRL_MEAS, (BMP180_READ_PRESS | oss));
-
-  /* Delay 25.5ms (to OverSampling 8X) */
-
-  nxsig_usleep(25500);
-
-  /* Read pressure */
-
-  priv->bmp180_upress = bmp180_getreg16(priv, BMP180_ADC_OUT_MSB) << 8;
-  priv->bmp180_upress |= bmp180_getreg8(priv, BMP180_ADC_OUT_XLSB);
-  priv->bmp180_upress = priv->bmp180_upress >> (8 - (oss >> 6));
-
-  sninfo("Uncompensated temperature = %d\n", priv->bmp180_utemp);
-  sninfo("Uncompensated pressure = %d\n", priv->bmp180_upress);
+	tmp = FORM_CONFIG(	params->standbytyme,
+						params->filter);
+	_putreg8(priv, BMP280_CTRL_MEAS, tmp);
 }
 
 /****************************************************************************
- * Name: bmp180_getpressure
+ * Name: _read_raw
  *
  * Description:
- *   Calculate the Barometric Pressure using the temperature compensated
- *   See Freescale AN3785 and BMP1801 data sheet for details
+ *   Read raw pressure and temperature from BMP280 and store it in the
+ *   bmp280_data_t.
  *
  ****************************************************************************/
 
-static int bmp180_getpressure(FAR struct bmp180_dev_s *priv)
+static bmp280_data_raw_t _read_raw(FAR bmp280_t *priv)
 {
-  int32_t x1;
-  int32_t x2;
-  int32_t x3;
-  int32_t b3;
-  int32_t b5;
-  int32_t b6;
-  int32_t press;
-  int32_t temp;
-  uint32_t b4;
-  uint32_t b7;
-  uint8_t oss = (CURRENT_OSS >> 6);
+	bmp280_data_raw_t retval = {0, 0};
 
-  /* Check if coefficient data were read correctly */
+	/* Issue a read temperature command */
+	if(priv->params.mode == BMP280_MODE_FORCED)	{
+		_putreg8( priv, BMP280_CTRL_MEAS, FORM_CTRL_MEAS(	priv->params.mode,
+															priv->params.pressure_oversampling,
+															priv->params.temperature_oversampling) );
+		/* Wait 5ms */
+		nxsig_usleep(5000); //FIXME для forced режима лучше бы нормально ждать с таймаутом. Впрочем, кому он нужен?
+	}
 
-  if ((priv->bmp180_cal_ac1 == 0) || (priv->bmp180_cal_ac2 == 0) ||
-      (priv->bmp180_cal_ac3 == 0) || (priv->bmp180_cal_ac4 == 0) ||
-      (priv->bmp180_cal_ac5 == 0) || (priv->bmp180_cal_ac6 == 0) ||
-      (priv->bmp180_cal_b1 == 0) || (priv->bmp180_cal_b2 == 0) ||
-      (priv->bmp180_cal_mb == 0) || (priv->bmp180_cal_mc == 0) ||
-      (priv->bmp180_cal_md == 0))
-    {
-      bmp180_updatecaldata(priv);
-    }
+	/* Read temperature */
+	_getregmany(priv, BMP280_TEMP_MSB, 3, &(retval.temperature));
+	retval.temperature = retval.temperature >> 12;
 
-  /* Read temperature and pressure */
+	/* Read pressure */
+	_getregmany(priv, BMP280_TEMP_MSB, 3, &(retval.temperature));
+	retval.pressure = retval.pressure >> 12;
 
-  bmp180_read_press_temp(priv);
+  	sninfo("Uncompensated temperature = %d\n", retval.temperature);
+  	sninfo("Uncompensated pressure = %d\n", retval.pressure);
+  	add_sensor_randomness(retval.pressure);
+  	add_sensor_randomness(retval.temperature);
 
-  /* Feed raw sensor data to entropy pool */
-
-  add_sensor_randomness((priv->bmp180_utemp << 16) ^ priv->bmp180_upress);
-
-  /* Calculate true temperature */
-
-  x1 = ((priv->bmp180_utemp - priv->bmp180_cal_ac6) * priv->bmp180_cal_ac5) >> 15;
-  x2 = (priv->bmp180_cal_mc << 11) / (x1 + priv->bmp180_cal_md);
-  b5 = x1 + x2;
-  temp = (b5 + 8) >> 4;
-  sninfo("Compensated temperature = %d\n", temp);
-
-  /* Calculate true pressure */
-
-  b6 = b5 - 4000;
-  x1 = (priv->bmp180_cal_b2 * ((b6 * b6) >> 12)) >> 11;
-  x2 = (priv->bmp180_cal_ac2 * b6) >> 11;
-  x3 = x1 + x2;
-  b3 = (((((int32_t) priv->bmp180_cal_ac1) * 4 + x3) << oss) + 2) >> 2;
-  x1 = (priv->bmp180_cal_ac3 * b6) >> 13;
-  x2 = (priv->bmp180_cal_b1 * ((b6 * b6) >> 12)) >> 16;
-  x3 = ((x1 + x2) + 2) >> 2;
-  b4 = (priv->bmp180_cal_ac4 * (uint32_t) (x3 + 32768)) >> 15;
-  b7 = ((uint32_t) (priv->bmp180_upress - b3) * (50000 >> oss));
-
-  if (b7 < 0x80000000)
-    {
-      press = (b7 << 1) / b4;
-    }
-  else
-    {
-      press = (b7 / b4) << 1;
-    }
-
-  x1 = (press >> 8) * (press >> 8);
-  x1 = (x1 * 3038) >> 16;
-  x2 = (-7357 * press) >> 16;
-
-  press = press + ((x1 + x2 + 3791) >> 4);
-
-  sninfo("Compressed pressure = %d\n", press);
-  return press;
+  	return retval;
 }
 
 /****************************************************************************
- * Name: bmp180_open
+ * Name: _recalc
  *
  * Description:
- *   This function is called whenever the BMP1801 device is opened.
+ *   Recalcs pressure (in Pa) and temperature (in degC) from raw data.
  *
  ****************************************************************************/
 
-static int bmp180_open(FAR struct file *filep)
+static bmp280_data_t _recalc(FAR bmp280_calibration_values_t * calvals, bmp280_data_raw_t rawdata) {
+	double t_fine;
+	bmp280_data_t retval = {0, 0};
+
+	{
+		double var1, var2;
+		var1 = (((double)rawdata.temperature)/16384.0 - ((double)calvals->T1)/1024.0) * ((double)calvals->T2);
+		var2 = ((((double)rawdata.temperature)/131072.0 - ((double)calvals->T1)/8192.0) *
+		(((double)rawdata.temperature)/131072.0 - ((double) calvals->T1)/8192.0)) * ((double)calvals->T3);
+		t_fine = var1 + var2;
+		retval.temperature = (var1 + var2) / 5120.0;
+	}
+
+	{
+		double var1, var2;
+		var1 = (t_fine/2.0) - 64000.0;
+		var2 = var1 * var1 * ((double)calvals->P6) / 32768.0;
+		var2 = var2 + var1 * ((double)calvals->P5) * 2.0;
+		var2 = (var2/4.0)+(((double)calvals->P4) * 65536.0);
+		var1 = (((double)calvals->P3) * var1 * var1 / 524288.0 + ((double)calvals->P2) * var1) / 524288.0;
+		var1 = (1.0 + var1 / 32768.0)*((double)calvals->P1);
+		if (var1 == 0.0)
+		{
+			return retval; // avoid exception caused by division by zero
+		}
+		retval.pressure = 1048576.0 - (double)rawdata.pressure;
+		retval.pressure = (retval.pressure - (var2 / 4096.0)) * 6250.0 / var1;
+		var1 = ((double)calvals->P9) * retval.pressure * retval.pressure / 2147483648.0;
+		var2 = retval.pressure * ((double)calvals->P8) / 32768.0;
+		retval.pressure = retval.pressure + (var1 + var2 + ((double)calvals->P7)) / 16.0;
+	}
+
+	return retval;
+}
+
+/****************************************************************************
+ * Name: _open
+ *
+ * Description:
+ *   This routine is called whenever the BMP280 device is opened.
+ *
+ ****************************************************************************/
+
+static int _open(FAR struct file *filep)
 {
   return OK;
 }
 
 /****************************************************************************
- * Name: bmp180_close
+ * Name: _close
  *
  * Description:
- *   This routine is called when the BMP180 device is closed.
+ *   This routine is called when the BMP280 device is closed.
  *
  ****************************************************************************/
 
-static int bmp180_close(FAR struct file *filep)
+static int _close(FAR struct file *filep)
 {
   return OK;
 }
 
 /****************************************************************************
- * Name: bmp180_read
+ * Name: _read
+ *
+ * Description:
+ *   This routine handles read from device.
+ *
  ****************************************************************************/
 
-static ssize_t bmp180_read(FAR struct file *filep, FAR char *buffer,
-                           size_t buflen)
+static ssize_t _read(FAR struct file *filep, FAR char *buffer, size_t buflen)
 {
-  FAR struct inode        *inode = filep->f_inode;
-  FAR struct bmp180_dev_s *priv  = inode->i_private;
-  FAR uint32_t            *press = (FAR uint32_t *) buffer;
+	FAR struct inode        *inode = filep->f_inode;
+	FAR bmp280_t 			*priv  = inode->i_private;
 
-  if (!buffer)
-    {
-      snerr("ERROR: Buffer is null\n");
-      return -1;
-    }
+	if (!buffer) {
+		snerr("ERROR: Buffer is null\n");
+		return -EINVAL;
+	}
 
-  if (buflen != 4)
-    {
-      snerr("ERROR: You can't read something other than 32 bits (4 bytes)\n");
-      return -1;
-    }
+	if( buflen != 8 && buflen != 16) {
+		snerr("ERROR: You can't read something other than raw data (8 bytes) or converted data (16 bytes)\n");
+		return -EINVAL;
+	}
 
-  /* Get the pressure compensated */
+	// Get the raw pressure
+	*( (bmp280_data_raw_t *) buffer )  = _read_raw(priv);
 
-  *press = (int32_t) bmp180_getpressure(priv);
+	if( buflen == 16 )
+		/* Get the pressure compensated */
+		*( (bmp280_data_t *) buffer ) = _recalc(&( priv->calvals ), *( (bmp280_data_raw_t *) buffer ));
 
-  /* Return size of uint32_t (4 bytes) */
-
-  return 4;
+	/* Return size of the buffer (which is equal to real data size)*/
+	return buflen;
 }
 
 /****************************************************************************
- * Name: bmp180_write
+ * Name: _write
  ****************************************************************************/
 
-static ssize_t bmp180_write(FAR struct file *filep, FAR const char *buffer,
-                            size_t buflen)
+static ssize_t _write(FAR struct file *filep, FAR const char *buffer, size_t buflen)
 {
   return -ENOSYS;
+}
+
+static int _ioctl(FAR struct file* filep, int cmd, unsigned long arg) {
+	FAR struct inode        *inode = filep->f_inode;
+	FAR bmp280_t 			*priv  = inode->i_private;
+	FAR bmp280_parameters_t *params = &(priv->params);
+
+
+	//TODO ассерты что ль поставить
+	switch(cmd) {
+
+	case BMP280_IOCTL_CMD_OVERSAMPLING_P:
+		params->pressure_oversampling = arg;
+		break;
+
+	case BMP280_IOCTL_CMD_OVERSAMPLING_T:
+		params->temperature_oversampling = arg;
+		break;
+
+	case BMP280_IOCTL_CMD_MODE:
+		params->mode = arg;
+		break;
+
+	case BMP280_IOCTL_CMD_STANDBYTIME:
+		params->standbytyme = arg;
+		break;
+
+	case BMP280_IOCTL_CMD_FILTER:
+		params->filter = arg;
+		break;
+
+	default:
+		return -EINVAL;
+	}
+
+	_updateparams(priv);
+	return OK;
 }
 
 /****************************************************************************
@@ -589,64 +593,66 @@ static ssize_t bmp180_write(FAR struct file *filep, FAR const char *buffer,
  ****************************************************************************/
 
 /****************************************************************************
- * Name: bmp180_register
+ * Name: bmp280_register
  *
  * Description:
- *   Register the BMP180 character device as 'devpath'
+ *   Register the BMP280 character device as '/dev/baroN'
  *
  * Input Parameters:
- *   devpath - The full path to the driver to register. E.g., "/dev/press0"
- *   i2c     - An instance of the I2C interface to use to communicate with
- *             BMP180
+ *   spi     - An instance of the I2C interface to use to communicate with BMP280
+ *	 minor   - Number
  *
  * Returned Value:
  *   Zero (OK) on success; a negated errno value on failure.
  *
  ****************************************************************************/
 
-int bmp180_register(FAR const char *devpath, FAR struct i2c_master_s *i2c)
+int bmp280_register(FAR struct spi_dev_s *spi, int minor)
 {
-  FAR struct bmp180_dev_s *priv;
-  int ret;
+	FAR bmp280_t *priv;
+	int ret;
 
-  /* Initialize the BMP180 device structure */
+	/* Initialize the BMP280 device structure */
 
-  priv = (FAR struct bmp180_dev_s *)kmm_malloc(sizeof(struct bmp180_dev_s));
-  if (!priv)
-    {
-      snerr("ERROR: Failed to allocate instance\n");
-      return -ENOMEM;
-    }
+	priv = (FAR bmp280_t *)kmm_malloc(sizeof(bmp280_t));
+	if (!priv) {
+		snerr("ERROR: Failed to allocate instance\n");
+		return -ENOMEM;
+	}
 
-  priv->i2c = i2c;
-  priv->addr = BMP180_ADDR;
-  priv->freq = BMP180_FREQ;
+	priv->spi = spi;
 
-  /* Check Device ID */
+	//default config
+	priv->params.mode = BMP280_MODE_DEFAULT;
+	priv->params.pressure_oversampling = BMP280_OVERSAMPLING_DEFAULT_P;
+	priv->params.temperature_oversampling = BMP280_OVERSAMPLING_DEFAULT_T;
+	priv->params.standbytyme = BMP280_STANDBYTIME_DEFAULT;
+	priv->params.filter = BMP280_FILTER_DEFAULT;
 
-  ret = bmp180_checkid(priv);
-  if (ret < 0)
-    {
-      snerr("ERROR: Failed to register driver: %d\n", ret);
-      kmm_free(priv);
-      return ret;
-    }
+	/* Check Device ID */
+	ret = _checkid(priv);
+	if (ret < 0) {
+		snerr("ERROR: Failed to register driver: %d\n", ret);
+		kmm_free(priv);
+		return ret;
+	}
 
-  /* Read the coefficient value */
+	/* Read the coefficient value */
+	_updatecaldata(priv);
 
-  bmp180_updatecaldata(priv);
+	/* Fill format string */
+	char devname[BMP280_DEV_NAMELEN];
+	snprintf(devname, BMP280_DEV_NAMELEN, BMP280_DEV_FORMAT, minor);
 
-  /* Register the character driver */
+	/* Register the character driver */
+	ret = register_driver(devname, &g_bmp280fops, 0666, priv);
+	if (ret < 0) {
+		snerr("ERROR: Failed to register driver: %d\n", ret);
+		kmm_free(priv);
+	}
 
-  ret = register_driver(devpath, &g_bmp180fops, 0666, priv);
-  if (ret < 0)
-    {
-      snerr("ERROR: Failed to register driver: %d\n", ret);
-      kmm_free(priv);
-    }
-
-  sninfo("BMP180 driver loaded successfully!\n");
-  return ret;
+	sninfo("BMP280 driver loaded successfully!\n");
+	return ret;
 }
 
-#endif /* CONFIG_I2C && CONFIG_SENSORS_BMP180 */
+#endif /* CONFIG_I2C && CONFIG_SENSORS_BMP280 */
