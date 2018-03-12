@@ -1,43 +1,3 @@
-
-/****************************************************************************
- * drivers/sensors/bmp180.c
- * Character driver for the Freescale BMP1801 Barometer Sensor
- *
- *   Copyright (C) 2015 Alan Carvalho de Assis
- *   Author: Alan Carvalho de Assis <acassis@gmail.com>
- *
- *   Copyright (C) 2015-2016 Gregory Nutt. All rights reserved.
- *   Author: Gregory Nutt <gnutt@nuttx.org>
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name NuttX nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- *
- ****************************************************************************/
-
 /****************************************************************************
  * Included Files
  ****************************************************************************/
@@ -45,6 +5,7 @@
 #include <nuttx/config.h>
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <fixedmath.h>
 #include <errno.h>
 #include <debug.h>
@@ -245,7 +206,7 @@ static uint16_t _getreg16(FAR bmp280_t *priv, uint8_t regaddr)
 
   /* Select the BMP280 */
 
-  SPI_SELECT(priv->spi, SPIDEVTYPE_BAROMETER(priv->devnum), true);
+  SPI_SELECT(priv->spi, SPIDEV_BAROMETER(priv->devnum), true);
 
   /* Send register to read and get the next 2 bytes */
 
@@ -279,7 +240,7 @@ static void _getregmany(FAR bmp280_t *priv, uint8_t regaddr, size_t count, FAR v
 
   /* Select the BMP280 */
 
-  SPI_SELECT(priv->spi, SPIDEVTYPE_BAROMETER(priv->devnum), true);
+  SPI_SELECT(priv->spi, SPIDEV_BAROMETER(priv->devnum), true);
 
   /* Send register to read and get the next 2 bytes */
 
@@ -369,6 +330,8 @@ static inline void _updatecaldata(FAR bmp280_t *priv)
 
 	_getregmany(priv, BMP280_T1_MSB, sizeof(&calvals), calvals);
 
+	/*
+    FIXME: Вобщет возвращает правдподобные значения с нулями в том числе
 	if(	!calvals->T1 || !calvals->T2 ||
 		!calvals->T3 || !calvals->P1 ||
 		!calvals->P2 || !calvals->P3 ||
@@ -376,8 +339,9 @@ static inline void _updatecaldata(FAR bmp280_t *priv)
 		!calvals->P6 || !calvals->P7 ||
 		!calvals->P8 || !calvals->P9 )
 		priv->calvals_correct = false;
-
-	else priv->calvals_correct = true;
+	else
+	    */
+	priv->calvals_correct = true;
 }
 
 /****************************************************************************
@@ -616,11 +580,12 @@ int bmp280_register(FAR struct spi_dev_s *spi, int minor)
 
 	priv = (FAR bmp280_t *)kmm_malloc(sizeof(bmp280_t));
 	if (!priv) {
-		snerr("ERROR: Failed to allocate instance\n");
+		snerr("ERROR: Failed to allocate bmp280 instance\n");
 		return -ENOMEM;
 	}
 
 	priv->spi = spi;
+	priv->devnum = minor;
 
 	//default config
 	priv->params.mode = BMP280_MODE_DEFAULT;

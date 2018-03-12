@@ -42,6 +42,10 @@ ifeq ($(CONFIG_MMCSD),y)
   CSRCS += stm32_mmcsd.c
 endif
 
+ifeq ($(CONFIG_SENSORS_BMP280),y)
+  CSRCS += stm32_bmp280.c
+endif
+
 ifeq ($(CONFIG_ARCH_LEDS),y)
 CSRCS += stm32_autoleds.c
 else

@@ -213,11 +213,7 @@ int stm32_mmcsd_initialize(int minor)
     nxsem_init(&g_cdsem, 0, 0);
     pthread_attr_init(&pattr);
 
-    #ifdef CONFIG_DEBUG_FS
     pthread_attr_setstacksize(&pattr, 1024);
-    #else
-    pthread_attr_setstacksize(&pattr, 256);
-    #endif
 
     schparam.sched_priority = 50;
     pthread_attr_setschedparam(&pattr, &schparam);
