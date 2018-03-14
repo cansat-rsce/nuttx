@@ -44,6 +44,13 @@
 
 #include <nuttx/config.h>
 
+#ifdef CONFIG_DEBUG_SENSORS
+
+#define CONFIG_DEBUG_INFO
+#define CONFIG_DEBUG_SENSORS_INFO
+
+#endif
+
 #include <stdlib.h>
 #include <fixedmath.h>
 #include <errno.h>
@@ -101,7 +108,7 @@
 #define BMP280_TEMP_XLSB	0xFC
 
 #define READADDR(ADDR)		( ADDR | (1 << 7) )
-#define WRITEADDR(ADDR)		( ADDR )
+#define WRITEADDR(ADDR)		( ADDR & ~(1 << 7))
 
 #define FORM_CTRL_MEAS(MODE, OS_P, OS_T)	(uint8_t)( MODE | ( OS_P << 2 ) | ( OS_T << 5 ) )
 #define FORM_CONFIG(STANDBYTIME, FILTER)	(uint8_t)( ( STANDBYTIME << 5 ) | ( FILTER << 2 ) )
@@ -123,7 +130,7 @@ typedef struct bmp280_dev_s
 	FAR struct spi_dev_s *spi; 		/* SPI interface */
 	int devnum;						/* Number of /dev/baroN */
 	bmp280_calibration_values_t calvals;
-	bool calvals_correct;
+	/*bool calvals_correct;*/
 	bmp280_parameters_t params;
 } bmp280_t;
 
@@ -367,9 +374,9 @@ static inline void _updatecaldata(FAR bmp280_t *priv)
 {
 	bmp280_calibration_values_t * calvals = &priv->calvals;
 
-	_getregmany(priv, BMP280_T1_MSB, sizeof(&calvals), calvals);
+	_getregmany(priv, BMP280_T1_MSB, sizeof(bmp280_calibration_values_t), calvals);
 
-	if(	!calvals->T1 || !calvals->T2 ||
+	/*if(	!calvals->T1 || !calvals->T2 ||
 		!calvals->T3 || !calvals->P1 ||
 		!calvals->P2 || !calvals->P3 ||
 		!calvals->P4 || !calvals->P5 ||
@@ -377,7 +384,7 @@ static inline void _updatecaldata(FAR bmp280_t *priv)
 		!calvals->P8 || !calvals->P9 )
 		priv->calvals_correct = false;
 
-	else priv->calvals_correct = true;
+	else priv->calvals_correct = true;*/
 }
 
 /****************************************************************************
@@ -423,13 +430,13 @@ static bmp280_data_raw_t _read_raw(FAR bmp280_t *priv)
 		nxsig_usleep(5000); //FIXME для forced режима лучше бы нормально ждать с таймаутом. Впрочем, кому он нужен?
 	}
 
-	/* Read temperature */
-	_getregmany(priv, BMP280_TEMP_MSB, 3, &(retval.temperature));
-	retval.temperature = retval.temperature >> 12;
+	uint8_t tmp[6];
 
-	/* Read pressure */
-	_getregmany(priv, BMP280_TEMP_MSB, 3, &(retval.temperature));
-	retval.pressure = retval.pressure >> 12;
+	_getregmany(priv, BMP280_PRESS_MSB, 6, tmp);
+
+	/* Read temperature and pressure*/
+	retval.pressure = ((uint32_t)tmp[0] << 12) | ((uint32_t)tmp[1] << 4) | ((uint32_t)tmp[2] >> 4);
+	retval.temperature = ((uint32_t)tmp[3] << 12) | ((uint32_t)tmp[4] << 4) | ((uint32_t)tmp[5] >> 4);
 
   	sninfo("Uncompensated temperature = %d\n", retval.temperature);
   	sninfo("Uncompensated pressure = %d\n", retval.pressure);
@@ -616,11 +623,12 @@ int bmp280_register(FAR struct spi_dev_s *spi, int minor)
 
 	priv = (FAR bmp280_t *)kmm_malloc(sizeof(bmp280_t));
 	if (!priv) {
-		snerr("ERROR: Failed to allocate instance\n");
+		snerr("ERROR: Failed to allocate bmp280 instance\n");
 		return -ENOMEM;
 	}
 
 	priv->spi = spi;
+	priv->devnum = minor;
 
 	//default config
 	priv->params.mode = BMP280_MODE_DEFAULT;
@@ -637,6 +645,9 @@ int bmp280_register(FAR struct spi_dev_s *spi, int minor)
 		return ret;
 	}
 
+	/* Update config */
+	_updateparams(priv);
+
 	/* Read the coefficient value */
 	_updatecaldata(priv);
 
@@ -651,7 +662,25 @@ int bmp280_register(FAR struct spi_dev_s *spi, int minor)
 		kmm_free(priv);
 	}
 
+#ifdef CONFIG_DEBUG_SENSORS_INFO
 	sninfo("BMP280 driver loaded successfully!\n");
+
+	nxsig_usleep(1000);
+
+	struct file thisIsNotFile;
+	struct inode thisIsNotInode;
+	bmp280_data_t result = {0, 0};
+
+	thisIsNotFile.f_inode = &thisIsNotInode;
+	thisIsNotInode.i_private = priv;
+
+	while(true) {
+		_read(&thisIsNotFile, &result, 16);
+		sninfo("BMP280: pressure: %f pa, temperature: %f deg\n",
+				result.pressure, result.temperature);
+		nxsig_usleep(1000);
+	}
+#endif
 	return ret;
 }
 
