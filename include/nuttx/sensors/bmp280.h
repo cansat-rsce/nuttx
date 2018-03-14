@@ -44,7 +44,7 @@
  * Pre-processor Definitions
  ********************************************************************************************/
 
-#define BMP280_FREQ         400000
+#define BMP280_FREQ         100000
 
 #define BMP280_DEV_FORMAT   "/dev/baro%d"
 #define BMP280_DEV_NAMELEN  16

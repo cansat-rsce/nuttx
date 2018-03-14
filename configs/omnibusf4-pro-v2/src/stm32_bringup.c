@@ -70,6 +70,8 @@
 #  define MMCSD_MINOR 0
 #endif
 
+#define BMP280_MINOR 0
+
 #include "omnibus4prov2.h"
 
 
@@ -187,6 +189,14 @@ int stm32_bringup(void)
   mac[4] = (CONFIG_NSH_MACADDR >> (8 * 1)) & 0xff;
   mac[5] = (CONFIG_NSH_MACADDR >> (8 * 0)) & 0xff;
   usbdev_rndis_initialize(mac);
+#endif
+
+#ifdef CONFIG_SENSORS_BMP280
+	ret = stm32_sensors_bmp280_initialize(BMP280_MINOR);
+	if (ret < 0) {
+		syslog(LOG_ERR, "Failed to initialize BMP280 %d: %d\n", BMP280_MINOR,ret);
+		return ret;
+	}
 #endif
 
   return ret;

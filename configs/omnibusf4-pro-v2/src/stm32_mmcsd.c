@@ -54,6 +54,8 @@
 #include "omnibus4prov2.h"
 #include "stm32_spi.h"
 
+#ifdef CONFIG_MMCSD
+
 /*****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
@@ -111,7 +113,7 @@ static void * stm32_cd_thread(void *arg)
       if (g_chmediaclbk)
         {
           /* Card doesn't seem to initialize properly without letting it to
-           * rest for a millsecond or so.
+           * rest for a millisecond or so.
            */
 
           nxsig_usleep(1 * 1000);
@@ -225,6 +227,6 @@ int stm32_mmcsd_initialize(int minor)
 
     spiinfo("INFO: mmcsd card has been initialized successfully\n");
     return OK;
-  spiinfo("INFO: mmcsd card has been initialized successfully\n");
-  return OK;
 }
+
+#endif /* CONFIG_MMCSD */

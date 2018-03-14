@@ -184,7 +184,7 @@ static inline void _configspi(FAR struct spi_dev_s *spi)
 {
   /* Configure SPI for the BMP280 */
 
-  SPI_SETMODE(spi, SPIDEV_MODE0);
+  SPI_SETMODE(spi, SPIDEV_MODE3);
   SPI_SETBITS(spi, 8);
   (void)SPI_HWFEATURES(spi, 0);
   (void)SPI_SETFREQUENCY(spi, BMP280_FREQ);
@@ -245,7 +245,7 @@ static uint16_t _getreg16(FAR bmp280_t *priv, uint8_t regaddr)
 
   /* Select the BMP280 */
 
-  SPI_SELECT(priv->spi, SPIDEVTYPE_BAROMETER(priv->devnum), true);
+  SPI_SELECT(priv->spi, SPIDEV_BAROMETER(priv->devnum), true);
 
   /* Send register to read and get the next 2 bytes */
 
@@ -279,7 +279,7 @@ static void _getregmany(FAR bmp280_t *priv, uint8_t regaddr, size_t count, FAR v
 
   /* Select the BMP280 */
 
-  SPI_SELECT(priv->spi, SPIDEVTYPE_BAROMETER(priv->devnum), true);
+  SPI_SELECT(priv->spi, SPIDEV_BAROMETER(priv->devnum), true);
 
   /* Send register to read and get the next 2 bytes */
 
