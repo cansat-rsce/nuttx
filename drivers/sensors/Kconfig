@@ -56,6 +56,13 @@ config SENSORS_BMP280
 	---help---
 		Enable driver support for the Bosch BMP280 barometer sensor.
 
+config SENSORS_GY-US42
+	bool "GY-US42 sonar support"
+	default n
+	select I2C
+	---help---
+		Enable driver support for the GY-US42 sonar sensor.
+
 config SENSORS_HCSR04
 	bool "HC-SR04 Distance Measurement Sensor"
 	default n
