@@ -144,7 +144,6 @@
 // TODO
 //#define GPIO_NRF24L01_CS
 
-
 // sd card cs pin
 #define GPIO_SDCARD_CS    (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
                            GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN12)
@@ -155,37 +154,6 @@
 // bmp280 cs pin
 #define GPIO_BMP280_CS	  (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
                            GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN3)
-
-///* PWM
-// *
-// * The STM32F4 Discovery has no real on-board PWM devices, but the board can be
-// * configured to output a pulse train using TIM4 CH2 on PD13.
-// */
-//
-//#define STM32F4DISCOVERY_PWMTIMER   4
-//#define STM32F4DISCOVERY_PWMCHANNEL 2
-
-///* USB OTG FS
-// *
-// * PA9  OTG_FS_VBUS VBUS sensing (also connected to the green LED)
-// * PC0  OTG_FS_PowerSwitchOn
-// * PD5  OTG_FS_Overcurrent
-// */
-//
-//#define GPIO_OTGFS_VBUS   (GPIO_INPUT|GPIO_FLOAT|GPIO_SPEED_100MHz|\
-//                           GPIO_OPENDRAIN|GPIO_PORTA|GPIO_PIN9)
-//#define GPIO_OTGFS_PWRON  (GPIO_OUTPUT|GPIO_FLOAT|GPIO_SPEED_100MHz|\
-//                           GPIO_PUSHPULL|GPIO_PORTC|GPIO_PIN0)
-//
-//#ifdef CONFIG_USBHOST
-//#  define GPIO_OTGFS_OVER (GPIO_INPUT|GPIO_EXTI|GPIO_FLOAT|\
-//                           GPIO_SPEED_100MHz|GPIO_PUSHPULL|\
-//                           GPIO_PORTD|GPIO_PIN5)
-//
-//#else
-//#  define GPIO_OTGFS_OVER (GPIO_INPUT|GPIO_FLOAT|GPIO_SPEED_100MHz|\
-//                           GPIO_PUSHPULL|GPIO_PORTD|GPIO_PIN5)
-//#endif
 
 /* omnibus-pro-v2 MicroSD
  *
@@ -249,94 +217,21 @@ void weak_function stm32_spidev_initialize(void);
   *
   ****************************************************************************/
 
- FAR struct i2s_dev_s *stm32_i2sdev_initialize(int port);
+FAR struct i2s_dev_s *stm32_i2sdev_initialize(int port);
 
-///****************************************************************************
-// * Name: stm32_lis3dshinitialize
-// *
-// * Description:
-// *   Called to configure SPI 1, and to register LIS3DSH and its external interrupt
-// *   for the stm32f4discovery board.
-// *
-// ****************************************************************************/
-//
-//#ifdef CONFIG_STM32F4DISCO_LIS3DSH
-//int stm32_lis3dshinitialize(FAR const char *devpath);
-//#endif
+#ifdef CONFIG_MMCSD
 
-///****************************************************************************
-// * Name: stm32_usbinitialize
-// *
-// * Description:
-// *   Called from stm32_usbinitialize very early in initialization to setup
-// *   USB-related GPIO pins for the STM32F4Discovery board.
-// *
-// ****************************************************************************/
-//
-//#ifdef CONFIG_STM32_OTGFS
-//void weak_function stm32_usbinitialize(void);
-//#endif
-//
-///****************************************************************************
-// * Name: stm32_usbhost_initialize
-// *
-// * Description:
-// *   Called at application startup time to initialize the USB host
-// *   functionality. This function will start a thread that will monitor for
-// *   device connection/disconnection events.
-// *
-// ****************************************************************************/
-//
-//#if defined(CONFIG_STM32_OTGFS) && defined(CONFIG_USBHOST)
-//int stm32_usbhost_initialize(void);
-//#endif
+// MMCD device initialization
+int stm32_mmcsd_initialize(int minor);
 
-///****************************************************************************
-// * Name: stm32_pwm_setup
-// *
-// * Description:
-// *   Initialize PWM and register the PWM device.
-// *
-// ****************************************************************************/
-//
-//#ifdef CONFIG_PWM
-//int stm32_pwm_setup(void);
-//#endif
+#endif /* CONFIG_MMCSD */
 
-///****************************************************************************
-// * Name: stm32_led_pminitialize
-// *
-// * Description:
-// *   Enable logic to use the LEDs on the STM32F4Discovery to support power
-// *   management testing
-// *
-// ****************************************************************************/
-//
-//#ifdef CONFIG_PM
-//void stm32_led_pminitialize(void);
-//#endif
+#ifdef CONFIG_SENSORS_BMP280
 
+// BMP280 device intialization
+int stm32_bmp280_initialize(int minor);
 
-///****************************************************************************
-// * Name: stm32_timer_driver_setup
-// *
-// * Description:
-// *   Configure the timer driver.
-// *
-// * Input Parameters:
-// *   devpath - The full path to the timer device.  This should be of the
-// *             form /dev/timer0
-// *   timer   - The timer's number.
-// *
-// * Returned Value:
-// *   Zero (OK) is returned on success; A negated errno value is returned
-// *   to indicate the nature of any failure.
-// *
-// ****************************************************************************/
-//
-//#ifdef CONFIG_TIMER
-//int stm32_timer_driver_setup(FAR const char *devpath, int timer);
-//#endif
+#endif /* CONFIG_SENSORS_BMP280 */
 
 #endif /* __ASSEMBLY__ */
 #endif /* __CONFIGS_OMNIBUSF4PROV2_SRC_OMNIBUSF4PROV2_H */

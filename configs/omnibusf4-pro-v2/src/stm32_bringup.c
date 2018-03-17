@@ -49,8 +49,6 @@
 #  include <nuttx/usb/usbmonitor.h>
 #endif
 
-#include <nuttx/binfmt/elf.h>
-
 #include "stm32.h"
 #include "stm32_romfs.h"
 
@@ -70,7 +68,10 @@
 #  define MMCSD_MINOR 0
 #endif
 
-#define BMP280_MINOR 0
+#ifdef CONFIG_SENSORS_BMP280
+#   define BMP280_MINOR (0)
+#   include <nuttx/sensors/bmp280.h>
+#endif
 
 #include "omnibus4prov2.h"
 
@@ -167,8 +168,15 @@ int stm32_bringup(void)
   if (ret < 0)
     {
       syslog(LOG_ERR, "Failed to initialize SD slot %d: %d\n", ret);
-      return ret;
     }
+#endif
+
+#ifdef CONFIG_SENSORS_BMP280
+  ret = stm32_bmp280_initialize(BMP280_MINOR);
+  if (ret < 0)
+  {
+      syslog(LOG_ERR, "Failed to initialize bmp280 driver: %d\n", ret);
+  }
 #endif
 
 #ifdef CONFIG_STM32_ROMFS

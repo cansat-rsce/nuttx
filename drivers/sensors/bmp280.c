@@ -1,43 +1,3 @@
-
-/****************************************************************************
- * drivers/sensors/bmp180.c
- * Character driver for the Freescale BMP1801 Barometer Sensor
- *
- *   Copyright (C) 2015 Alan Carvalho de Assis
- *   Author: Alan Carvalho de Assis <acassis@gmail.com>
- *
- *   Copyright (C) 2015-2016 Gregory Nutt. All rights reserved.
- *   Author: Gregory Nutt <gnutt@nuttx.org>
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in
- *    the documentation and/or other materials provided with the
- *    distribution.
- * 3. Neither the name NuttX nor the names of its contributors may be
- *    used to endorse or promote products derived from this software
- *    without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
- * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
- * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
- * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
- * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
- * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
- * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
- * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- *
- ****************************************************************************/
-
 /****************************************************************************
  * Included Files
  ****************************************************************************/
@@ -52,6 +12,7 @@
 #endif
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <fixedmath.h>
 #include <errno.h>
 #include <debug.h>
@@ -373,18 +334,7 @@ static int _checkid(FAR bmp280_t *priv)
 static inline void _updatecaldata(FAR bmp280_t *priv)
 {
 	bmp280_calibration_values_t * calvals = &priv->calvals;
-
 	_getregmany(priv, BMP280_T1_MSB, sizeof(bmp280_calibration_values_t), calvals);
-
-	/*if(	!calvals->T1 || !calvals->T2 ||
-		!calvals->T3 || !calvals->P1 ||
-		!calvals->P2 || !calvals->P3 ||
-		!calvals->P4 || !calvals->P5 ||
-		!calvals->P6 || !calvals->P7 ||
-		!calvals->P8 || !calvals->P9 )
-		priv->calvals_correct = false;
-
-	else priv->calvals_correct = true;*/
 }
 
 /****************************************************************************

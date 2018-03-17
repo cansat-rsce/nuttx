@@ -147,6 +147,7 @@ uint8_t stm32_spi2status(FAR struct spi_dev_s *dev, uint32_t devid)
 #endif /* CONFIG_STM32_SPI2 */
 
 #ifdef CONFIG_STM32_SPI3
+
 void stm32_spi3select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
 {
 	spiinfo("devid: %d CS: %s\n", (int)devid, selected ? "assert" : "de-assert");
@@ -158,14 +159,14 @@ void stm32_spi3select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
 
 uint8_t stm32_spi3status(FAR struct spi_dev_s *dev, uint32_t devid)
 {
-	uint8_t status = 0;
-
+    uint8_t status = 0;
+    
 #ifdef CONFIG_SENSORS_BMP280
 	if (devid == SPIDEV_BAROMETER(0) ) status |= SPI_STATUS_PRESENT; /*Because bmp280 is always on board
 																	and there are no way to detect it */
 #endif
 
-	return status;
+  return status;
 }
 #endif /* CONFIG_STM32_SPI3 */
 
