@@ -46,7 +46,7 @@ static void chipenable(bool enable) {
  * Public Functions
  ****************************************************************************/
 
-int stm32_nrf24l01_initialize(int minor) {
+int stm32_nrf24l01_initialize(void) {
 	struct spi_dev_s *spi;
 
 	sninfo("INFO: Initializing NRF24L01+\n");

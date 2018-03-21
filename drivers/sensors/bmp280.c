@@ -624,12 +624,9 @@ int bmp280_register(FAR struct spi_dev_s *spi, int minor)
 	thisIsNotFile.f_inode = &thisIsNotInode;
 	thisIsNotInode.i_private = priv;
 
-	while(true) {
-		_read(&thisIsNotFile, &result, 16);
-		sninfo("BMP280: pressure: %f pa, temperature: %f deg\n",
+	_read(&thisIsNotFile, &result, 16);
+	sninfo("BMP280: pressure: %f pa, temperature: %f deg\n",
 				result.pressure, result.temperature);
-		nxsig_usleep(1000);
-	}
 #endif
 	return ret;
 }

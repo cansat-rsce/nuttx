@@ -179,6 +179,14 @@ int stm32_bringup(void)
   }
 #endif
 
+#ifdef CONFIG_WL_NRF24L01
+  ret = stm32_nrf24l01_initialize();
+  if (ret < 0)
+  {
+	  syslog(LOG_ERR, "Failed to initialize NRF24L01+ driver: %d\n", ret);
+  }
+#endif
+
 #ifdef CONFIG_STM32_ROMFS
   ret = stm32_romfs_initialize();
   if (ret < 0)
@@ -197,13 +205,6 @@ int stm32_bringup(void)
   mac[4] = (CONFIG_NSH_MACADDR >> (8 * 1)) & 0xff;
   mac[5] = (CONFIG_NSH_MACADDR >> (8 * 0)) & 0xff;
   usbdev_rndis_initialize(mac);
-#endif
-
-#ifdef CONFIG_SENSORS_BMP280
-	ret = stm32_sensors_bmp280_initialize(BMP280_MINOR);
-	if (ret < 0) {
-		syslog(LOG_ERR, "Failed to initialize BMP280 %d: %d\n", BMP280_MINOR, ret);
-	}
 #endif
 
   return ret;

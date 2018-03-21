@@ -240,5 +240,12 @@ int stm32_sensors_bmp280_initialize(int minor);
 
 #endif /* CONFIG_SENSORS_BMP280 */
 
+#ifdef CONFIG_WL_NRF24L01
+
+// NRF24L01+ device intialization
+int stm32_nrf24l01_initialize(void);
+
+#endif /* CONFIG_WL_NRF24L01 */
+
 #endif /* __ASSEMBLY__ */
 #endif /* __CONFIGS_OMNIBUSF4PROV2_SRC_OMNIBUSF4PROV2_H */
