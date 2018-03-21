@@ -141,8 +141,15 @@
 
 /* SPI additional pins */
 
-// TODO
-//#define GPIO_NRF24L01_CS
+// nrf24l01+ cs pin
+#define GPIO_NRF24L01_CS 	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
+							GPIO_OUTPUT_SET|GPIO_PORTD|GPIO_PIN2)
+// nrf24l01+ ce pin FIXME задать правильный пин
+#define GPIO_NRF24L01_CE 	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
+							GPIO_OUTPUT_SET|GPIO_PORTA|GPIO_PIN1)
+// nrf24l01+ interrupt pin
+#define GPIO_NRF24L01_INT	(GPIO_INPUT|GPIO_SPEED_50MHz|GPIO_FLOAT|\
+							GPIO_EXTI|GPIO_PORTA|GPIO_PIN8)
 
 // sd card cs pin
 #define GPIO_SDCARD_CS    (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
@@ -229,7 +236,7 @@ int stm32_mmcsd_initialize(int minor);
 #ifdef CONFIG_SENSORS_BMP280
 
 // BMP280 device intialization
-int stm32_bmp280_initialize(int minor);
+int stm32_sensors_bmp280_initialize(int minor);
 
 #endif /* CONFIG_SENSORS_BMP280 */
 

@@ -70,13 +70,21 @@
 void weak_function stm32_spidev_initialize(void)
 {
 #ifdef CONFIG_MMCSD_SPI
-  stm32_configgpio(GPIO_SDCARD_CS);           /* SD/MMC Card chip select */
-  stm32_spi2select(0, SPIDEV_MMCSD(0), false);
+	stm32_configgpio(GPIO_SDCARD_CS);           /* SD/MMC Card chip select */
+	stm32_spi2select(0, SPIDEV_MMCSD(0), false);
 #endif
 
 #ifdef CONFIG_SENSORS_BMP280
-  stm32_configgpio(GPIO_BMP280_CS);
-  stm32_spi3select(0, SPIDEV_BAROMETER(0), false);
+	stm32_configgpio(GPIO_BMP280_CS);
+	stm32_spi3select(0, SPIDEV_BAROMETER(0), false);
+#endif
+
+#ifdef CONFIG_WL_NRF24L01
+	stm32_configgpio(GPIO_NRF24L01_CS);			/* NRF24l01+ chip select */
+    stm32_spi2select(0, SPIDEV_WIRELESS(0), false);
+
+    stm32_configgpio(GPIO_NRF24L01_CE);			/* NRF24l01+ chip enable */
+    stm32_gpiowrite(GPIO_NRF24L01_CE, false);
 #endif
 }
 
@@ -155,6 +163,10 @@ void stm32_spi3select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
 #ifdef CONFIG_SENSORS_BMP280
 	if( devid == SPIDEV_BAROMETER(0) ) stm32_gpiowrite(GPIO_BMP280_CS, !selected);
 #endif
+
+#ifdef CONFIG_WL_NRF24L01
+	if( devid == SPIDEV_WIRELESS(0) ) stm32_gpiowrite(GPIO_NRF24L01_CS, !selected);
+#endif
 }
 
 uint8_t stm32_spi3status(FAR struct spi_dev_s *dev, uint32_t devid)
@@ -163,6 +175,11 @@ uint8_t stm32_spi3status(FAR struct spi_dev_s *dev, uint32_t devid)
     
 #ifdef CONFIG_SENSORS_BMP280
 	if (devid == SPIDEV_BAROMETER(0) ) status |= SPI_STATUS_PRESENT; /*Because bmp280 is always on board
+																	and there are no way to detect it */
+#endif
+
+#ifdef CONFIG_WL_NRF24L01
+	if (devid == SPIDEV_WIRELESS(0) ) status |= SPI_STATUS_PRESENT; /*Because bmp280 is always on board
 																	and there are no way to detect it */
 #endif
 

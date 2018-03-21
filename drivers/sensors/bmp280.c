@@ -634,4 +634,4 @@ int bmp280_register(FAR struct spi_dev_s *spi, int minor)
 	return ret;
 }
 
-#endif /* CONFIG_I2C && CONFIG_SENSORS_BMP280 */
+#endif /* CONFIG_SPI && CONFIG_SENSORS_BMP280 */

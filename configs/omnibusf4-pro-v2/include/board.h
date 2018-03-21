@@ -196,28 +196,28 @@
 
 /* UART2: */
 
-//#define GPIO_USART2_RX GPIO_USART2_RX_1
-//#define GPIO_USART2_TX GPIO_USART2_TX_1
+#define GPIO_USART2_RX GPIO_USART2_RX_1		// PA3
+#define GPIO_USART2_TX GPIO_USART2_TX_1		// PA2
 
 /* UART3: is disabled for I2C2 sake on same pins */
 
 //#define GPIO_USART3_TX GPIO_USART3_TX_1     // PB10
 //#define GPIO_USART3_RX GPIO_USART3_RX_1     // PB11
 
-/* UART4: is not used */
+/* UART4: only rx for gps */
 
 //#define GPIO_USART4_TX GPIO_USART4_TX_1
-//#define GPIO_USART4_RX GPIO_USART4_RX_1
+#define GPIO_UART4_RX GPIO_UART4_RX_1		 // PA1
 
 /* UART5: is not used */
 
-//#define GPIO_USART5_TX GPIO_USART5_TX_1
-//#define GPIO_USART5_RX GPIO_USART5_RX_1
+//#define GPIO_UART5_TX GPIO_UART5_TX_1
+//#define GPIO_UART5_RX GPIO_UART5_RX_1
 
-/* UART6: is available with J10 pin group*/
+/* USART6: is not used */
 
-#define GPIO_USART6_RX GPIO_USART6_RX_1     // PC7
-#define GPIO_USART6_TX GPIO_USART6_TX_1     // PC6
+//#define GPIO_USART6_RX GPIO_USART6_RX_1     // PC7
+//#define GPIO_USART6_TX GPIO_USART6_TX_1     // PC6
 
 /* PWM
  *
@@ -251,7 +251,7 @@
 // #define GPIO_I2C1_SCL    GPIO_I2C1_SCL_1
 // #define GPIO_I2C1_SDA    GPIO_I2C1_SDA_2
 
-/* I2C2 is avalible on pingroup J10 */
+/* I2C2 is avalible */
 #define GPIO_I2C2_SCL   GPIO_I2C2_SCL_1 // PB10
 #define GPIO_I2C2_SDA   GPIO_I2C2_SDA_1 // PB11
 

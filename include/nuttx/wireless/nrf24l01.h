@@ -176,10 +176,9 @@ typedef struct nrf24l01_retrcfg_s nrf24l01_retrcfg_t;
 struct nrf24l01_config_s
 {
   /* IRQ/GPIO access callbacks.  These operations all hidden behind
-   * callbacks to isolate the ADS7843E driver from differences in GPIO
-   * interrupt handling by varying boards and MCUs.  If possible,
-   * interrupts should be configured on both rising and falling edges
-   * so that contact and loss-of-contact events can be detected.
+   * callbacks to isolate the NRF24L01+ driver from differences in GPIO
+   * interrupt handling by varying boards and MCUs.
+   * Interrupts should be configured on rising edge.
    *
    * irqattach  - Attach the driver interrupt handler to the GPIO interrupt
    * chipenable - Enable or disable the chip  (CE line)

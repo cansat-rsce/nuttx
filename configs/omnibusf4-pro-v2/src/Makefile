@@ -46,6 +46,10 @@ ifeq ($(CONFIG_SENSORS), y)
 	CSRCS += stm32_sensors.c
 endif
 
+ifeq ($(CONFIG_WL_NRF24L01), y)
+	CSRCS += stm32_nrf24l01.c
+endif
+
 ifeq ($(CONFIG_ARCH_LEDS),y)
 CSRCS += stm32_autoleds.c
 else

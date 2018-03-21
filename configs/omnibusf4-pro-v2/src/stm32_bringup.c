@@ -172,7 +172,7 @@ int stm32_bringup(void)
 #endif
 
 #ifdef CONFIG_SENSORS_BMP280
-  ret = stm32_bmp280_initialize(BMP280_MINOR);
+  ret = stm32_sensors_bmp280_initialize(BMP280_MINOR);
   if (ret < 0)
   {
       syslog(LOG_ERR, "Failed to initialize bmp280 driver: %d\n", ret);
