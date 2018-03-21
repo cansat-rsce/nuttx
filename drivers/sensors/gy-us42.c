@@ -3,30 +3,57 @@
  ****************************************************************************/
 
 #include <stdint.h>
+#include <stdlib.h>
+#include <fixedmath.h>
+#include <errno.h>
+#include <debug.h>
 
 #include <nuttx/config.h>
 #include <nuttx/i2c/i2c_master.h>
+#include <nuttx/kmalloc.h>
+#include <nuttx/signal.h>
+#include <nuttx/fs/fs.h>
 
-#define CONFIG_I2C
-#define CONFIG_SENSORS_GY_US42
-
-#define GY-US42_ADDR         0x77
-#define GY-US42_FREQ         100000
+#define GY_US42_ADDR 		 0x77
+#define GY_US42_FREQ         100000
 #define ADDR_UNLOCK_1	     0xAA
 #define ADDR_UNLOCK_2		 0xA5
-#define ADDR_DEFAULT 		 0xE0
+#define CONFIG_SENSORS_GY_US42   // перенести в конфиг потом
 
-#if defined(CONFIG_I2C) && defined(CONFIG_SENSORS_GY-US42)
+#if defined(CONFIG_I2C) && defined(CONFIG_SENSORS_GY_US42)
 
-struct gy-us42_dev_s
+struct gy_us42_dev_s
 {
-	FAR struct i2c_master_s *i2c; /* I2C interface */
-	uint8_t addr;                 /* GY-US42 I2C address */
-	int freq;                     /* GY-US42 Frequency */
+	FAR struct i2c_master_s *i2c;  /* I2C interface */
+	struct i2c_config_s *config;
 };
 
 /****************************************************************************
- * Name: gy-us42_change_addr
+ * Private Function Prototypes
+ ****************************************************************************/
+
+static uint16_t gy_us42_getreg8(FAR struct gy_us42_dev_s *priv, uint8_t regaddr);
+static uint8_t gy_us42_getreg16(FAR struct gy_us42_dev_s *priv, uint8_t regaddr);
+
+/* Character driver methods */
+
+static int gy_us42_open(FAR struct file *filep);
+static int gy_us42_close(FAR struct file *filep);
+
+static const struct file_operations g_gy_us42fops =
+{
+  gy_us42_open,                  /* open */
+  gy_us42_close,                 /* close */
+  0,                            /* seek */
+  0,                            /* ioctl */
+#ifndef CONFIG_DISABLE_POLL
+  0,                            /* poll */
+#endif
+  0                             /* unlink */
+};
+
+/****************************************************************************
+ * Name: gy_us42_change_addr
  *
  * Description:
  *   Change GY_US42 sensor address from default value of 224.
@@ -38,144 +65,189 @@ struct gy-us42_dev_s
  *
  ****************************************************************************/
 
-static void gy-us42_change_addr(FAR struct gy-us42_dev_s *priv, struct i2c_config_s config, uint8_t new_addr)
+/*static void gy_us42_change_addr(FAR struct gy_us42_dev_s *priv, uint8_t new_addr)
 {
+	struct i2c_msg_s msg;
+	uint8_t unlock1 = ADDR_UNLOCK_1;
+	uint8_t unlock2 = ADDR_UNLOCK_2;
+	uint8_t commands[3] = {unlock1, unlock2, new_addr};
 	int ret;
-	uint8_t regaddr = config.addr;
-	uint8_t unlock_1 = ADDR_UNLOCK_1;
-	uint8_t unlock_2 = ADDR_UNLOCK_2;
 
-	ret = i2c_write(priv->i2c, &config, &regaddr, 1);
-	ret = i2c_write(priv->i2c, &config, &unlock_1, 1);
-	ret = i2c_write(priv->i2c, &config, &unlock_2, 1);
-	ret = i2c_write(priv->i2c, &config, &new_addr, 1);
-}
+	// Setup 8-bit GY_US42 address write message
+
+	msg.frequency = priv->config->frequency;  // I2C frequency
+	msg.addr      = priv->config->address;    // 7-bit address
+	msg.flags     = 0;                        // Write transaction, beginning with START
+	msg.buffer    = commands;                 // Transfer from this address
+	msg.length    = 3;                        // Send one byte following the address
+												// (no STOP)
+	// Perform the transfer
+
+	ret = I2C_TRANSFER(priv->i2c, msg, 2);
+	if (ret < 0)
+	{
+		snerr("ERROR: I2C_TRANSFER failed: %d\n", ret);
+	}
+
+}*/
 
 /****************************************************************************
- * Name: gy-us42_getreg16
+ * Name: gy_us42_getreg16
  *
  * Description:
- *   Read two 8-bit from a GY-US42 register
+ *   Read two 8-bit from a GY_US42 register
  *
  ****************************************************************************/
 
-static uint16_t gy-us42_getreg16(FAR struct gy-us42_dev_s *priv, uint8_t regaddr)
+uint8_t gy_us42_getreg16(FAR struct gy_us42_dev_s *priv, uint8_t regaddr)
 {
-	struct i2c_config_s config;
-	uint16_t msb, lsb;
-	uint16_t regval = 0;
+    struct i2c_msg_s msg[2];
+    uint8_t regval;
+    int ret;
+
+    /* Setup 8-bit GY_US42 address write message */
+
+    msg[0].frequency = priv->config->frequency;  /* I2C frequency */
+    msg[0].addr      = priv->config->address;    /* 7-bit address */
+    msg[0].flags     = 0;                        /* Write transaction, beginning with START */
+    msg[0].buffer    = &regaddr;                 /* Transfer from this address */
+    msg[0].length    = 1;                        /* Send one byte following the address
+                                                * (no STOP) */
+
+    /* Set up the 8-bit GY_US42 data read message */
+
+    msg[1].frequency = priv->config->frequency;  /* I2C frequency */
+    msg[1].addr      = priv->config->address;    /* 7-bit address */
+    msg[1].flags     = I2C_M_READ;               /* Read transaction, beginning with Re-START */
+    msg[1].buffer    = &regval;                  /* Transfer to this address */
+    msg[1].length    = 2;                        /* Receive two bytes following the address
+                                                  * (then STOP) */
+
+    /* Perform the transfer */
+
+    ret = I2C_TRANSFER(priv->i2c, msg, 2);
+    if (ret < 0)
+    {
+        snerr("ERROR: I2C_TRANSFER failed: %d\n", ret);
+        return 0;
+    }
+    return regval;
+}
+
+/****************************************************************************
+ * Name: gy_us42_getreg8
+ *
+ * Description:
+ *   Read 8-bit from a GY_US42 register
+ *
+ ****************************************************************************/
+
+uint8_t gy_us42_getreg8(FAR struct gy_us42_dev_s *priv, uint8_t regaddr) {
+	struct i2c_msg_s msg[2];
+	uint8_t regval;
 	int ret;
 
-	/* Set up the I2C configuration */
+	/* Setup 8-bit GY_US42 address write message */
 
-	config.frequency = priv->freq;
-	config.address   = priv->addr;
-	config.addrlen   = 7;
+	msg[0].frequency = priv->config->frequency;  /* I2C frequency */
+	msg[0].addr      = priv->config->address;    /* 7-bit address */
+	msg[0].flags     = 0;                        /* Write transaction, beginning with START */
+	msg[0].buffer    = &regaddr;                 /* Transfer from this address */
+	msg[0].length    = 1;                        /* Send one byte following the address
+	                                                * (no STOP) */
 
-	/* Register to read */
+	/* Set up the 8-bit GY_US42 data read message */
 
-	ret = i2c_write(priv->i2c, &config, &regaddr, 1);
+	msg[1].frequency = priv->config->frequency;  /* I2C frequency */
+	msg[1].addr      = priv->config->address;    /* 7-bit address */
+	msg[1].flags     = I2C_M_READ;               /* Read transaction, beginning with Re-START */
+	msg[1].buffer    = &regval;                  /* Transfer to this address */
+	msg[1].length    = 2;                        /* Receive two bytes following the address
+	                                                  * (then STOP) */
+
+	/* Perform the transfer */
+
+	ret = I2C_TRANSFER(priv->i2c, msg, 2);
 	if (ret < 0)
 	{
-		snerr("ERROR: i2c_write failed: %d\n", ret);
-		return ret;
+	    snerr("ERROR: I2C_TRANSFER failed: %d\n", ret);
+	    return 0;
 	}
-
-	/* Read register */
-
-	ret = i2c_read(priv->i2c, &config, (uint8_t *)&regval, 2);
-	if (ret < 0)
-	{
-		snerr("ERROR: i2c_read failed: %d\n", ret);
-		return ret;
-	}
-
-	/* MSB and LSB are inverted */
-
-	msb = (regval & 0xFF);
-	lsb = (regval & 0xFF00) >> 8;
-
-	regval = (msb << 8) | lsb;
-
 	return regval;
 }
 
 /****************************************************************************
- * Name: gy-us42_open
+ * Name: gy_us42_open
  *
  * Description:
- *   This function is called whenever the GY-US42 device is opened.
+ *   This function is called whenever the GY_US42 device is opened.
  *
  ****************************************************************************/
 
-static int gy-us42_open(FAR struct file *filep)
+static int gy_us42_open(FAR struct file *filep)
 {
 	return OK;
 }
 
 /****************************************************************************
- * Name: gy-us42_close
+ * Name: gy_us42_close
  *
  * Description:
- *   This routine is called when the GY-US42 device is closed.
+ *   This routine is called when the GY_US42 device is closed.
  *
  ****************************************************************************/
 
-static int gy-us42_close(FAR struct file *filep)
+static int gy_us42_close(FAR struct file *filep)
 {
 	return OK;
 }
 
 /****************************************************************************
- * Name: gy-us42_register
+ * Name: gy_us42_register
  *
  * Description:
- *   Register the GY-US42 character device as 'devpath'
+ *   Register the GY_US42 character device as 'devpath'
  *
  * Input Parameters:
  *   devpath - The full path to the driver to register. E.g., "/dev/press0"
  *   i2c     - An instance of the I2C interface to use to communicate with
- *             GY-US42
+ *             GY_US42
  *
  * Returned Value:
  *   Zero (OK) on success; a negated errno value on failure.
  *
  ****************************************************************************/
 
-int gy-us42_register(FAR const char *devpath, FAR struct i2c_master_s *i2c)
+int gy_us42_register(FAR const char *devpath, FAR struct i2c_master_s *i2c)
 {
-	priv = (FAR struct gy-us42_dev_s *)kmm_malloc(sizeof(struct gy-us42_dev_s));
-	if (!priv) {
+	  FAR struct gy_us42_dev_s *priv;
+	  int ret;
+
+	  /* Initialize the GY_US42 device structure */
+
+	  priv = (FAR struct gy_us42_dev_s *)kmm_malloc(sizeof(struct gy_us42_dev_s));
+	  if (!priv)
+	    {
 	      snerr("ERROR: Failed to allocate instance\n");
-	      return -ENOMEM;
-	}
+	      return -1;
+	    }
 
-	priv->i2c = i2c;
-	priv->addr = GY-US42_ADDR;
-    priv->freq = GY-US42_FREQ;
+	  priv->i2c = i2c;
+	  priv->config->address = GY_US42_ADDR;
+	  priv->config->frequency = GY_US42_FREQ;
 
-	/* Check Device ID */
+	  /* Register the character driver */
 
-	ret = gy-us42_checkid(priv);
-	if (ret < 0)
-	{
-	  snerr("ERROR: Failed to register driver: %d\n", ret);
-	  kmm_free(priv);
+	  ret = register_driver(devpath, &g_gy_us42fops, 0666, priv);
+	  if (ret < 0)
+	  {
+	      snerr("ERROR: Failed to register driver: %d\n", ret);
+	      kmm_free(priv);
+	  }
+
+	  sninfo("GY_US42 driver loaded successfully!\n");
 	  return ret;
-	}
-
-	/* Register the character driver */
-
-	ret = register_driver(devpath, &g_gy-us42fops, 0666, priv);
-	if (ret < 0)
-	{
-	  snerr("ERROR: Failed to register driver: %d\n", ret);
-	  kmm_free(priv);
-	}
-
-	sninfo("GY-US42 driver loaded successfully!\n");
-	return ret;
 }
 
-#endif /* CONFIG_I2C && CONFIG_SENSORS_GY-US42 */
+#endif /* CONFIG_I2C && CONFIG_SENSORS_GY_US42 */
 
