@@ -32,8 +32,7 @@ struct gy_us42_dev_s
  * Private Function Prototypes
  ****************************************************************************/
 
-static uint16_t gy_us42_getreg8(FAR struct gy_us42_dev_s *priv, uint8_t regaddr);
-static uint8_t gy_us42_getreg16(FAR struct gy_us42_dev_s *priv, uint8_t regaddr);
+static uint16_t gy_us42_getreg16(FAR struct gy_us42_dev_s *priv, uint8_t regaddr);
 
 /* Character driver methods */
 
@@ -98,83 +97,52 @@ static const struct file_operations g_gy_us42fops =
  *   Read two 8-bit from a GY_US42 register
  *
  ****************************************************************************/
-
-uint8_t gy_us42_getreg16(FAR struct gy_us42_dev_s *priv, uint8_t regaddr)
+uint16_t gy_us42_getreg16(FAR struct gy_us42_dev_s *priv, uint8_t regaddr)
 {
-    struct i2c_msg_s msg[2];
-    uint8_t regval;
-    int ret;
+  /* 16-bit data read sequence:
+   *
+   *  Start - I2C_Write_Address - GY_US42_Reg_Address -
+   *    Repeated_Start - I2C_Read_Address  - GY_US42_Read_Data_1 -
+   *      GY_US42_Read_Data_2 - STOP
+   */
 
-    /* Setup 8-bit GY_US42 address write message */
+  struct i2c_msg_s msg[2];
+  uint8_t rxbuffer[2];
+  int ret;
 
-    msg[0].frequency = priv->config->frequency;  /* I2C frequency */
-    msg[0].addr      = priv->config->address;    /* 7-bit address */
-    msg[0].flags     = 0;                        /* Write transaction, beginning with START */
-    msg[0].buffer    = &regaddr;                 /* Transfer from this address */
-    msg[0].length    = 1;                        /* Send one byte following the address
+  /* Setup 8-bit GY_US42 address write message */
+
+  msg[0].frequency = priv->config->frequency;  /* I2C frequency */
+  msg[0].addr      = priv->config->address;    /* 7-bit address */
+  msg[0].flags     = 0;                        /* Write transaction, beginning with START */
+  msg[0].buffer    = &regaddr;                 /* Transfer from this address */
+  msg[0].length    = 1;                        /* Send one byte following the address
                                                 * (no STOP) */
 
-    /* Set up the 8-bit GY_US42 data read message */
+  /* Set up the 8-bit GY_US42 data read message */
 
-    msg[1].frequency = priv->config->frequency;  /* I2C frequency */
-    msg[1].addr      = priv->config->address;    /* 7-bit address */
-    msg[1].flags     = I2C_M_READ;               /* Read transaction, beginning with Re-START */
-    msg[1].buffer    = &regval;                  /* Transfer to this address */
-    msg[1].length    = 2;                        /* Receive two bytes following the address
-                                                  * (then STOP) */
+  msg[1].frequency = priv->config->frequency;  /* I2C frequency */
+  msg[1].addr      = priv->config->address;    /* 7-bit address */
+  msg[1].flags     = I2C_M_READ;               /* Read transaction, beginning with Re-START */
+  msg[1].buffer    = rxbuffer;                 /* Transfer to this address */
+  msg[1].length    = 2;                        /* Receive two bytes following the address
+                                                * (then STOP) */
 
-    /* Perform the transfer */
+  /* Perform the transfer */
 
-    ret = I2C_TRANSFER(priv->i2c, msg, 2);
-    if (ret < 0)
+  ret = I2C_TRANSFER(priv->i2c, msg, 2);
+  if (ret < 0)
     {
-        snerr("ERROR: I2C_TRANSFER failed: %d\n", ret);
-        return 0;
+      snerr("ERROR: I2C_TRANSFER failed: %d\n", ret);
+      return 0;
     }
-    return regval;
+
+#ifdef CONFIG_GY_US42_REGDEBUG
+  _err("%02x->%02x%02x\n", regaddr, rxbuffer[0], rxbuffer[1]);
+#endif
+  return (uint16_t)rxbuffer[0] << 8 | (uint16_t)rxbuffer[1];
 }
 
-/****************************************************************************
- * Name: gy_us42_getreg8
- *
- * Description:
- *   Read 8-bit from a GY_US42 register
- *
- ****************************************************************************/
-
-uint8_t gy_us42_getreg8(FAR struct gy_us42_dev_s *priv, uint8_t regaddr) {
-	struct i2c_msg_s msg[2];
-	uint8_t regval;
-	int ret;
-
-	/* Setup 8-bit GY_US42 address write message */
-
-	msg[0].frequency = priv->config->frequency;  /* I2C frequency */
-	msg[0].addr      = priv->config->address;    /* 7-bit address */
-	msg[0].flags     = 0;                        /* Write transaction, beginning with START */
-	msg[0].buffer    = &regaddr;                 /* Transfer from this address */
-	msg[0].length    = 1;                        /* Send one byte following the address
-	                                                * (no STOP) */
-
-	/* Set up the 8-bit GY_US42 data read message */
-
-	msg[1].frequency = priv->config->frequency;  /* I2C frequency */
-	msg[1].addr      = priv->config->address;    /* 7-bit address */
-	msg[1].flags     = I2C_M_READ;               /* Read transaction, beginning with Re-START */
-	msg[1].buffer    = &regval;                  /* Transfer to this address */
-	msg[1].length    = 2;                        /* Receive two bytes following the address
-	                                                  * (then STOP) */
-
-	/* Perform the transfer */
-
-	ret = I2C_TRANSFER(priv->i2c, msg, 2);
-	if (ret < 0)
-	{
-	    snerr("ERROR: I2C_TRANSFER failed: %d\n", ret);
-	    return 0;
-	}
-	return regval;
-}
 
 /****************************************************************************
  * Name: gy_us42_open
