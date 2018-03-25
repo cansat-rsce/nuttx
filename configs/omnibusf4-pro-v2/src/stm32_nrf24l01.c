@@ -46,6 +46,11 @@ static void chipenable(bool enable) {
  * Public Functions
  ****************************************************************************/
 
+struct nrf24l01_config_s config = {
+	.irqattach = irqattach,
+	.chipenable = chipenable
+};
+ 
 int stm32_nrf24l01_initialize(void) {
 	struct spi_dev_s *spi;
 
@@ -56,11 +61,6 @@ int stm32_nrf24l01_initialize(void) {
 		snerr("ERROR: Failed to initialize SPI port %d\n", NRF_SPI_PORT);
 		return -ENODEV;
 	}
-
-	struct nrf24l01_config_s config = {
-		.irqattach = irqattach,
-		.chipenable = chipenable,
-	};
 
 	return nrf24l01_register(spi, &config);
 }
