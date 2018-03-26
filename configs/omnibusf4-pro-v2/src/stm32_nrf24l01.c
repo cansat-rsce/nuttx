@@ -28,7 +28,7 @@
  * Private Definitions
  ****************************************************************************/
 
-#define NRF_SPI_PORT 3 /* nsf24 is connected to SPI3 port */
+#define NRF_SPI_PORT 3 /* NRF24L01+ is connected to SPI3 port */
 
 /*****************************************************************************
  * Private Definitions
@@ -53,7 +53,7 @@ struct nrf24l01_config_s config = {
  
 int stm32_nrf24l01_initialize(void) {
 	struct spi_dev_s *spi;
-	stm32_gpiosetevent
+	
 	sninfo("INFO: Initializing NRF24L01+\n");
 
 	spi = stm32_spibus_initialize(NRF_SPI_PORT);
