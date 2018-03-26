@@ -114,6 +114,8 @@
 #define NRF24L01_MASK_MAX_RT    (1 << 4)
 #define NRF24L01_EN_CRC         (1 << 3)
 #define NRF24L01_CRCO           (1 << 2)
+#define NRF24L01_CRC_SHIFT		2
+#define NRF24L01_CRC_MASK		(3 << NRF24L01_CRC_SHIFT)
 #define NRF24L01_PWR_UP         (1 << 1)
 #define NRF24L01_PRIM_RX        (1 << 0)
 

@@ -35,7 +35,7 @@
  ****************************************************************************/
 
 static int irqattach(xcpt_t isr, FAR void *arg) {
-	return stm32_gpiosetevent(GPIO_NRF24L01_INT, true, false, false, isr, arg); //FIXME check args
+	return stm32_gpiosetevent(GPIO_NRF24L01_INT, false, true, false, isr, arg); //FIXME check args
 }
 
 static void chipenable(bool enable) {

@@ -80,6 +80,9 @@
 #define NRF24L01IOC_GETSTATE         _WLCIOC(NRF24L01_FIRST+11) /* arg: Pointer to a nrf24l01_state_t value */
 #define NRF24L01IOC_GETLASTXMITCOUNT _WLCIOC(NRF24L01_FIRST+12) /* arg: Pointer to an uint32_t value, retransmission count of the last send operation (NRF24L01_XMIT_MAXRT if no ACK received)*/
 #define NRF24L01IOC_GETLASTPIPENO    _WLCIOC(NRF24L01_FIRST+13) /* arg: Pointer to an uint32_t value, pipe # of the last received packet */
+#define NRF24L01IOC_SETCRCMODE       _WLCIOC(NRF24L01_FIRST+14) /* arg: Pointer to a nrf24l01_crcmode_t value*/
+#define NRF24L01IOC_GETCRCMODE       _WLCIOC(NRF24L01_FIRST+15) /* arg: Pointer to a nrf24l01_crcmode_t value*/
+
 
 /* Aliased name for these commands */
 
@@ -142,6 +145,15 @@ typedef enum
   DELAY_4000us
 } nrf24l01_retransmit_delay_t;
 
+/* CRC setting */
+
+typedef enum
+{
+  CRC_DISABLED 	= 0b00,
+  CRC_1BYTE 	= 0b10,
+  CRC_2BYTE		= 0b11,
+} nrf24l01_crcmode_t;
+
 /* Opaque definition of a nRF24L01 device */
 
 struct nrf24l01_dev_s;
@@ -178,7 +190,7 @@ struct nrf24l01_config_s
   /* IRQ/GPIO access callbacks.  These operations all hidden behind
    * callbacks to isolate the NRF24L01+ driver from differences in GPIO
    * interrupt handling by varying boards and MCUs.
-   * Interrupts should be configured on rising edge.
+   * Interrupts should be configured on falling edge.
    *
    * irqattach  - Attach the driver interrupt handler to the GPIO interrupt
    * chipenable - Enable or disable the chip  (CE line)
@@ -424,6 +436,28 @@ int nrf24l01_setaddrwidth(FAR struct nrf24l01_dev_s *dev, uint32_t width);
  ************************************************************************************/
 
 int nrf24l01_changestate(FAR struct nrf24l01_dev_s *dev, nrf24l01_state_t state);
+
+/************************************************************************************
+ * Change the current CRC setting of the nRF24L01+ chip.
+ *
+ * Input Parameters:
+ *   dev Pointer to an nRF24L01 device structure
+ *   setting New CRC setting
+ *
+ ************************************************************************************/
+
+int nrf24l01_setcrcmode(FAR struct nrf24l01_dev_s *dev, nrf24l01_crcmode_t setting);
+
+/************************************************************************************
+ * Get current CRC setting of the nRF24L01+ chip.
+ *
+ * Input Parameters:
+ *   dev Pointer to an nRF24L01 device structure
+ *   setting New CRC setting
+ *
+ ************************************************************************************/
+
+int nrf24l01_getcrcmode(FAR struct nrf24l01_dev_s *dev, nrf24l01_crcmode_t *setting);
 
 /************************************************************************************
  * Send data to the default address.

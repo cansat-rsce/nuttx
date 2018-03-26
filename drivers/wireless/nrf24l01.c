@@ -223,7 +223,7 @@ static void nrf24l01_worker(FAR void *arg);
 #endif
 
 #ifdef CONFIG_DEBUG_WIRELESS
-static void binarycvt(char *deststr, const uint8_t *srcbin, size_t srclen)
+static void binarycvt(char *deststr, const uint8_t *srcbin, size_t srclen);
 #endif
 
 /* POSIX API */
@@ -1327,6 +1327,24 @@ static int nrf24l01_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
           break;
         }
 
+      case NRF24L01IOC_SETCRCMODE:
+        {
+    	  FAR nrf24l01_crcmode_t *crcmodep = (FAR nrf24l01_crcmode_t *)(arg);
+    	  DEBUGASSERT(crcmodep != NULL);
+
+    	  nrf24l01_setcrcmode(dev, *crcmodep);
+    	  break;
+        }
+
+      case NRF24L01IOC_GETCRCMODE:
+        {
+    	  FAR nrf24l01_crcmode_t *crcmodep = (FAR nrf24l01_crcmode_t *)(arg);
+    	  DEBUGASSERT(crcmodep != NULL);
+
+    	  nrf24l01_getcrcmode(dev, crcmodep);
+    	  break;
+        }
+
       default:
         ret = -ENOTTY;
         break;
@@ -1498,6 +1516,8 @@ int nrf24l01_register(FAR struct spi_dev_s *spi,
   dev->nxt_write  = 0;
   dev->fifo_len   = 0;
 
+  memset(&( dev->irq_work ), 0, sizeof( struct work_s) );
+
   nxsem_init(&(dev->sem_fifo), 0, 1);
   nxsem_init(&(dev->sem_rx), 0, 0);
   nxsem_setprotocol(&dev->sem_rx, SEM_PRIO_NONE);
@@ -1532,7 +1552,7 @@ int nrf24l01_register(FAR struct spi_dev_s *spi,
 int nrf24l01_init(FAR struct nrf24l01_dev_s *dev)
 {
   int ret = OK;
-  uint8_t features;
+  volatile uint8_t features;
 
   CHECK_ARGS(dev);
   nrf24l01_lock(dev->spi);
@@ -1598,7 +1618,6 @@ int nrf24l01_init(FAR struct nrf24l01_dev_s *dev)
 
   nrf24l01_writeregbyte(dev, NRF24L01_STATUS,
                         NRF24L01_RX_DR | NRF24L01_TX_DS | NRF24L01_MAX_RT);
-
 out:
   nrf24l01_unlock(dev->spi);
   return ret;
@@ -1949,6 +1968,49 @@ int nrf24l01_setaddrwidth(FAR struct nrf24l01_dev_s *dev, uint32_t width)
 }
 
 /****************************************************************************
+ * Name: nrf24l01_setcrcmode
+ ****************************************************************************/
+
+int nrf24l01_setcrcmode(FAR struct nrf24l01_dev_s *dev, nrf24l01_crcmode_t setting)
+{
+  uint8_t value;
+
+  CHECK_ARGS(dev && (setting == CRC_DISABLED || setting == CRC_1BYTE || setting == CRC_2BYTE));
+
+  nrf24l01_lock(dev->spi);
+
+  value = nrf24l01_readregbyte(dev, NRF24L01_CONFIG);
+
+  value &= !NRF24L01_EN_CRC & !NRF24L01_CRCO;
+  value |= setting << NRF24L01_CRC_SHIFT;
+
+  nrf24l01_writeregbyte(dev, NRF24L01_CONFIG, value);
+  nrf24l01_unlock(dev->spi);
+  return OK;
+}
+
+/****************************************************************************
+ * Name: nrf24l01_getcrcmode
+ ****************************************************************************/
+
+int nrf24l01_getcrcmode(FAR struct nrf24l01_dev_s *dev, nrf24l01_crcmode_t *setting)
+{
+  uint8_t value;
+
+  CHECK_ARGS(dev && setting);
+
+  nrf24l01_lock(dev->spi);
+  value = nrf24l01_readregbyte(dev, NRF24L01_CONFIG);
+  nrf24l01_unlock(dev->spi);
+
+  *setting = ( value & NRF24L01_CRC_MASK ) >> NRF24L01_CRC_SHIFT;
+  if( !( *setting & (1 << 1) ) ) // DISABLED value may be 00 or 01
+	  *setting = CRC_DISABLED;
+
+  return OK;
+}
+
+/****************************************************************************
  * Name: nrf24l01_changestate
  ****************************************************************************/
 
@@ -2060,7 +2122,7 @@ void nrf24l01_dumpregs(struct nrf24l01_dev_s *dev)
   char addrstr[NRF24L01_MAX_ADDR_LEN * 2 +1];
 
   syslog(LOG_INFO, "CONFIG:    %02x\n",
-         nrf24l01_readregbyte(dev, NRF24L01_CONFIG));
+		  nrf24l01_readregbyte(dev, NRF24L01_CONFIG));
   syslog(LOG_INFO, "EN_AA:     %02x\n",
          nrf24l01_readregbyte(dev, NRF24L01_EN_AA));
   syslog(LOG_INFO, "EN_RXADDR: %02x\n",
@@ -2071,13 +2133,37 @@ void nrf24l01_dumpregs(struct nrf24l01_dev_s *dev)
   syslog(LOG_INFO, "SETUP_RETR:%02x\n",
          nrf24l01_readregbyte(dev, NRF24L01_SETUP_RETR));
   syslog(LOG_INFO, "RF_CH:     %02x\n",
-         nrf24l01_readregbyte(dev, NRF24L01_RF_CH));
+		  (int)nrf24l01_readregbyte(dev, NRF24L01_RF_CH));
   syslog(LOG_INFO, "RF_SETUP:  %02x\n",
          nrf24l01_readregbyte(dev, NRF24L01_RF_SETUP));
   syslog(LOG_INFO, "STATUS:    %02x\n",
          nrf24l01_readregbyte(dev, NRF24L01_STATUS));
   syslog(LOG_INFO, "OBS_TX:    %02x\n",
          nrf24l01_readregbyte(dev, NRF24L01_OBSERVE_TX));
+
+  nrf24l01_readreg(dev, NRF24L01_RX_ADDR_P0, addr, dev->addrlen);
+  binarycvt(addrstr, addr, dev->addrlen);
+  syslog(LOG_INFO, "RX_ADDR_P0:   %s\n", addrstr);
+
+  nrf24l01_readreg(dev, NRF24L01_RX_ADDR_P1, addr, dev->addrlen);
+  binarycvt(addrstr, addr, dev->addrlen);
+  syslog(LOG_INFO, "RX_ADDR_P1:   %s\n", addrstr);
+
+  nrf24l01_readreg(dev, NRF24L01_RX_ADDR_P2, addr, dev->addrlen);
+  binarycvt(addrstr, addr, dev->addrlen);
+  syslog(LOG_INFO, "RX_ADDR_P2:   %s\n", addrstr);
+
+  nrf24l01_readreg(dev, NRF24L01_RX_ADDR_P3, addr, dev->addrlen);
+  binarycvt(addrstr, addr, dev->addrlen);
+  syslog(LOG_INFO, "RX_ADDR_P3:   %s\n", addrstr);
+
+  nrf24l01_readreg(dev, NRF24L01_RX_ADDR_P4, addr, dev->addrlen);
+  binarycvt(addrstr, addr, dev->addrlen);
+  syslog(LOG_INFO, "RX_ADDR_P4:   %s\n", addrstr);
+
+  nrf24l01_readreg(dev, NRF24L01_RX_ADDR_P5, addr, dev->addrlen);
+  binarycvt(addrstr, addr, dev->addrlen);
+  syslog(LOG_INFO, "RX_ADDR_P5:   %s\n", addrstr);
 
   nrf24l01_readreg(dev, NRF24L01_TX_ADDR, addr, dev->addrlen);
   binarycvt(addrstr, addr, dev->addrlen);

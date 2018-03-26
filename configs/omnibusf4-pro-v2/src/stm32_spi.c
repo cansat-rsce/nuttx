@@ -81,7 +81,7 @@ void weak_function stm32_spidev_initialize(void)
 
 #ifdef CONFIG_WL_NRF24L01
 	stm32_configgpio(GPIO_NRF24L01_CS);			/* NRF24l01+ chip select */
-    stm32_spi2select(0, SPIDEV_WIRELESS(0), false);
+    stm32_spi3select(0, SPIDEV_WIRELESS(0), false);
 
     stm32_configgpio(GPIO_NRF24L01_CE);			/* NRF24l01+ chip enable */
     stm32_gpiowrite(GPIO_NRF24L01_CE, false);
