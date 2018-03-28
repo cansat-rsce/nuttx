@@ -54,6 +54,8 @@
 #include "stm32.h"
 #include "stm32_romfs.h"
 
+#include <nuttx/sensors/gy_us42.h>
+
 #ifdef CONFIG_STM32_OTGFS
 #  include "stm32_usbhost.h"
 #endif
@@ -199,6 +201,18 @@ int stm32_bringup(void)
     {
       syslog(LOG_ERR, "ERROR: userled_lower_initialize() failed: %d\n", ret);
     }
+#endif
+
+#ifdef CONFIG_SENSORS_GY_US42
+
+  FAR struct i2c_master_s *i2c;
+  i2c = stm32_i2cbus_initialize(1);
+  ret = gy_us42_register("/dev/range0", i2c);
+
+  if (ret < 0)
+  {
+      snerr("ERROR: Error registering BM180\n");
+  }
 #endif
 
 #ifdef HAVE_RTC_DRIVER

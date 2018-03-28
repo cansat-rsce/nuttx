@@ -14,18 +14,22 @@
 #include <nuttx/signal.h>
 #include <nuttx/fs/fs.h>
 
+
+
 #define GY_US42_ADDR 		 0x77
 #define GY_US42_FREQ         100000
 #define ADDR_UNLOCK_1	     0xAA
 #define ADDR_UNLOCK_2		 0xA5
-#define CONFIG_SENSORS_GY_US42   // перенести в конфиг потом
 
 #if defined(CONFIG_I2C) && defined(CONFIG_SENSORS_GY_US42)
 
 struct gy_us42_dev_s
 {
 	FAR struct i2c_master_s *i2c;  /* I2C interface */
-	struct i2c_config_s *config;
+	struct {
+		  uint32_t frequency;          /* I2C frequency */
+		  uint8_t address;            /* I2C address (7- or 10-bit) */
+	} bus_config;
 };
 
 /****************************************************************************
@@ -38,13 +42,16 @@ static uint16_t gy_us42_getreg16(FAR struct gy_us42_dev_s *priv, uint8_t regaddr
 
 static int gy_us42_open(FAR struct file *filep);
 static int gy_us42_close(FAR struct file *filep);
+static int gy_us42_read(FAR struct file *filep, FAR char *buffer, size_t buflen);
+static int gy_us42_write(FAR struct file *filep, FAR const char *buffer,
+        size_t buflen);
 
 static const struct file_operations g_gy_us42fops =
 {
   gy_us42_open,                  /* open */
   gy_us42_close,                 /* close */
-  0,                            /* seek */
-  0,                            /* ioctl */
+  gy_us42_read,                  /* seek */
+  gy_us42_write,                 /* ioctl */
 #ifndef CONFIG_DISABLE_POLL
   0,                            /* poll */
 #endif
@@ -112,21 +119,21 @@ uint16_t gy_us42_getreg16(FAR struct gy_us42_dev_s *priv, uint8_t regaddr)
 
   /* Setup 8-bit GY_US42 address write message */
 
-  msg[0].frequency = priv->config->frequency;  /* I2C frequency */
-  msg[0].addr      = priv->config->address;    /* 7-bit address */
-  msg[0].flags     = 0;                        /* Write transaction, beginning with START */
-  msg[0].buffer    = &regaddr;                 /* Transfer from this address */
-  msg[0].length    = 1;                        /* Send one byte following the address
-                                                * (no STOP) */
+  msg[0].frequency = priv->bus_config.frequency;    /* I2C frequency */
+  msg[0].addr      = priv->bus_config.address;      /* 7-bit address */
+  msg[0].flags     = 0;                             /* Write transaction, beginning with START */
+  msg[0].buffer    = &(priv->bus_config.address);   /* Transfer from this address */
+  msg[0].length    = 1;                             /* Send one byte following the address
+                                                     * (no STOP) */
 
   /* Set up the 8-bit GY_US42 data read message */
 
-  msg[1].frequency = priv->config->frequency;  /* I2C frequency */
-  msg[1].addr      = priv->config->address;    /* 7-bit address */
-  msg[1].flags     = I2C_M_READ;               /* Read transaction, beginning with Re-START */
-  msg[1].buffer    = rxbuffer;                 /* Transfer to this address */
-  msg[1].length    = 2;                        /* Receive two bytes following the address
-                                                * (then STOP) */
+  msg[1].frequency = priv->bus_config.frequency;    /* I2C frequency */
+  msg[1].addr      = priv->bus_config.address;      /* 7-bit address */
+  msg[1].flags     = I2C_M_READ;                    /* Read transaction, beginning with Re-START */
+  msg[1].buffer    = rxbuffer;                      /* Transfer to this address */
+  msg[1].length    = 2;                             /* Receive two bytes following the address
+                                                     * (then STOP) */
 
   /* Perform the transfer */
 
@@ -141,33 +148,6 @@ uint16_t gy_us42_getreg16(FAR struct gy_us42_dev_s *priv, uint8_t regaddr)
   _err("%02x->%02x%02x\n", regaddr, rxbuffer[0], rxbuffer[1]);
 #endif
   return (uint16_t)rxbuffer[0] << 8 | (uint16_t)rxbuffer[1];
-}
-
-
-/****************************************************************************
- * Name: gy_us42_open
- *
- * Description:
- *   This function is called whenever the GY_US42 device is opened.
- *
- ****************************************************************************/
-
-static int gy_us42_open(FAR struct file *filep)
-{
-	return OK;
-}
-
-/****************************************************************************
- * Name: gy_us42_close
- *
- * Description:
- *   This routine is called when the GY_US42 device is closed.
- *
- ****************************************************************************/
-
-static int gy_us42_close(FAR struct file *filep)
-{
-	return OK;
 }
 
 /****************************************************************************
@@ -201,8 +181,8 @@ int gy_us42_register(FAR const char *devpath, FAR struct i2c_master_s *i2c)
 	    }
 
 	  priv->i2c = i2c;
-	  priv->config->address = GY_US42_ADDR;
-	  priv->config->frequency = GY_US42_FREQ;
+	  priv->bus_config.address = GY_US42_ADDR;
+	  priv->bus_config.frequency = GY_US42_FREQ;
 
 	  /* Register the character driver */
 
@@ -215,6 +195,85 @@ int gy_us42_register(FAR const char *devpath, FAR struct i2c_master_s *i2c)
 
 	  sninfo("GY_US42 driver loaded successfully!\n");
 	  return ret;
+}
+
+/****************************************************************************
+ * Name: gy_us42_open
+ *
+ * Description:
+ *   This function is called whenever the GY_US42 device is opened.
+ *
+ ****************************************************************************/
+
+static int gy_us42_open(FAR struct file *filep)
+{
+	return OK;
+}
+
+/****************************************************************************
+ * Name: gy_us42_close
+ *
+ * Description:
+ *   This routine is called when the GY_US42 device is closed.
+ *
+ ****************************************************************************/
+
+static int gy_us42_close(FAR struct file *filep)
+{
+	return OK;
+}
+
+static int gy_us42_read(FAR struct file *filep, FAR char *buffer, size_t buflen)
+{
+	FAR struct inode *inode = filep->f_inode;
+	FAR struct gy_us42_dev_s *priv  = inode->i_private;
+
+	if (!buffer) {
+		snerr("ERROR: Buffer is null\n");
+		return -EINVAL;
+	}
+
+	if (buflen != 2) {
+		snerr("ERROR: Buffer size is not 2\n");
+		return -EINVAL;
+	}
+
+	struct i2c_msg_s msg[2];
+	  int ret;
+
+	  /* Setup 8-bit GY_US42 address write message */
+
+	  msg[0].frequency = priv->bus_config.frequency;    /* I2C frequency */
+	  msg[0].addr      = priv->bus_config.address;      /* 7-bit address */
+	  msg[0].flags     = 0;                             /* Write transaction, beginning with START */
+	  msg[0].buffer    = &(priv->bus_config.address);   /* Transfer from this address */
+	  msg[0].length    = 1;                             /* Send one byte following the address
+	                                                    * (no STOP) */
+
+	  /* Set up the 8-bit GY_US42 data read message */
+
+	  msg[1].frequency = priv->bus_config.frequency;       /* I2C frequency */
+	  msg[1].addr      = priv->bus_config.address;         /* 7-bit address */
+	  msg[1].flags     = I2C_M_READ;                    /* Read transaction, beginning with Re-START */
+	  msg[1].buffer    = buffer;                      /* Transfer to this address */
+	  msg[1].length    = 2;                             /* Receive two bytes following the address
+	                                                     * (then STOP) */
+
+	  /* Perform the transfer */
+
+	  ret = I2C_TRANSFER(priv->i2c, msg, 2);
+	  if (ret < 0)
+	    {
+	      snerr("ERROR: I2C_TRANSFER failed: %d\n", ret);
+	      return 0;
+	    }
+	return OK;
+}
+
+static int gy_us42_write(FAR struct file *filep, FAR const char *buffer,
+        size_t buflen)
+{
+	return OK;
 }
 
 #endif /* CONFIG_I2C && CONFIG_SENSORS_GY_US42 */
