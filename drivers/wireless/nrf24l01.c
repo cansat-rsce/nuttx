@@ -57,6 +57,7 @@
 #include <unistd.h>
 #include <semaphore.h>
 #include <poll.h>
+#include <fcntl.h>
 #include <debug.h>
 
 #include <nuttx/kmalloc.h>
@@ -151,6 +152,7 @@ struct nrf24l01_dev_s
   uint8_t pipedatalen[NRF24L01_PIPE_COUNT];
 
   uint8_t pipe0addr[NRF24L01_MAX_ADDR_LEN];  /* Configured address on pipe 0 */
+  uint8_t txaddr[NRF24L01_MAX_ADDR_LEN];	/* Configured tx address */
 
   uint8_t last_recvpipeno;
   sem_t sem_tx;
@@ -586,6 +588,16 @@ static uint8_t fifoget(FAR struct nrf24l01_dev_s *dev, FAR uint8_t *buffer,
   nxsem_post(&dev->sem_fifo);
   return pktlen;
 }
+
+static uint16_t fifoavailable(FAR struct nrf24l01_dev_s *dev) {
+  uint16_t retval;
+
+  (void)nxsem_wait(&dev->sem_fifo);
+  retval = dev->fifo_len;
+  nxsem_post(&dev->sem_fifo);
+
+  return retval;
+}
 #endif
 
 /****************************************************************************
@@ -654,6 +666,7 @@ static void nrf24l01_worker(FAR void *arg)
   FAR struct nrf24l01_dev_s *dev = (FAR struct nrf24l01_dev_s *) arg;
   uint8_t status;
   uint8_t fifo_status;
+  uint8_t pktlen;
 
   nrf24l01_lock(dev->spi);
 
@@ -675,7 +688,6 @@ static void nrf24l01_worker(FAR void *arg)
       do
         {
           uint8_t pipeno;
-          uint8_t pktlen;
           uint8_t buf[NRF24L01_MAX_PAYLOAD_LEN];
 
           /* For each packet:
@@ -1061,7 +1073,14 @@ static ssize_t nrf24l01_read(FAR struct file *filep, FAR char *buffer,
       return ret;
     }
 
+  if( (filep->f_oflags & O_NONBLOCK) && !fifoavailable(dev) ) {
+    ret = -EWOULDBLOCK;
+    goto end;
+  }
+
   ret = nrf24l01_recv(dev, (uint8_t *)buffer, buflen, &dev->last_recvpipeno);
+
+end:
   nxsem_post(&dev->devsem);
   return ret;
 #endif
@@ -1563,7 +1582,7 @@ int nrf24l01_init(FAR struct nrf24l01_dev_s *dev)
 
   /* Enable features. */
 
-  nrf24l01_writeregbyte(dev, NRF24L01_FEATURE, NRF24L01_EN_DPL);
+  nrf24l01_writeregbyte(dev, NRF24L01_FEATURE, NRF24L01_EN_DPL | NRF24L01_EN_ACK_PAY);
   features = nrf24l01_readregbyte(dev, NRF24L01_FEATURE);
   if (0 == features)
     {
@@ -1652,6 +1671,8 @@ int nrf24l01_setpipeconfig(FAR struct nrf24l01_dev_s *dev,
   addrlen = (pipeno <= 1) ? dev->addrlen : 1;
   nrf24l01_writereg(dev, NRF24L01_RX_ADDR_P0 + pipeno, pipecfg->rx_addr,
                     addrlen);
+
+  if(pipeno == 0) memcpy(dev->pipe0addr, pipecfg->rx_addr, addrlen);
 
   /* Auto ack */
 
@@ -1774,6 +1795,7 @@ int nrf24l01_settxaddr(FAR struct nrf24l01_dev_s *dev,
 
   nrf24l01_lock(dev->spi);
 
+  memcpy(dev->txaddr, txaddr, dev->addrlen);
   nrf24l01_writereg(dev, NRF24L01_TX_ADDR, txaddr, dev->addrlen);
   nrf24l01_unlock(dev->spi);
   return OK;
@@ -2029,16 +2051,7 @@ int nrf24l01_changestate(FAR struct nrf24l01_dev_s *dev, nrf24l01_state_t state)
 int nrf24l01_send(FAR struct nrf24l01_dev_s *dev, FAR const uint8_t *data,
                   size_t datalen)
 {
-  int ret;
-
-  CHECK_ARGS(dev && data && datalen <= NRF24L01_MAX_PAYLOAD_LEN);
-
-  nrf24l01_lock(dev->spi);
-
-  ret = dosend(dev, data, datalen);
-
-  nrf24l01_unlock(dev->spi);
-  return ret;
+  return nrf24l01_sendto(dev, data, datalen, dev->txaddr);
 }
 
 /****************************************************************************
