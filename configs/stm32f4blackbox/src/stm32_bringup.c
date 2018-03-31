@@ -53,6 +53,7 @@
 
 #include "stm32.h"
 #include "stm32_romfs.h"
+#include "../include/board.h"
 
 #include <nuttx/sensors/gy_us42.h>
 
@@ -206,6 +207,8 @@ int stm32_bringup(void)
 #ifdef CONFIG_SENSORS_GY_US42
 
   FAR struct i2c_master_s *i2c;
+  stm32_configgpio(GPIO_I2C1_SCL);
+  stm32_configgpio(GPIO_I2C1_SDA);
   i2c = stm32_i2cbus_initialize(1);
   ret = gy_us42_register("/dev/range0", i2c);
 

@@ -14,6 +14,10 @@
 
 struct i2c_master_s;
 
+typedef enum {
+	GY_US42_IOCTL_CMD_MEASURE,
+} gy_us42_ioctl_cmd_t;
+
 #ifdef __cplusplus
 #define EXTERN extern "C"
 extern "C"

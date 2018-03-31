@@ -13,13 +13,13 @@
 #include <nuttx/kmalloc.h>
 #include <nuttx/signal.h>
 #include <nuttx/fs/fs.h>
+#include "nuttx/sensors/gy_us42.h"
 
-
-
-#define GY_US42_ADDR 		 0x77
-#define GY_US42_FREQ         100000
-#define ADDR_UNLOCK_1	     0xAA
-#define ADDR_UNLOCK_2		 0xA5
+#define GY_US42_ADDR 		   0b01110000
+#define GY_US42_FREQ           100000
+#define ADDR_UNLOCK_1	       0xAA
+#define ADDR_UNLOCK_2		   0xA5
+#define GY_US42_MEASURE_BYTE   0x51
 
 #if defined(CONFIG_I2C) && defined(CONFIG_SENSORS_GY_US42)
 
@@ -36,26 +36,25 @@ struct gy_us42_dev_s
  * Private Function Prototypes
  ****************************************************************************/
 
-static uint16_t gy_us42_getreg16(FAR struct gy_us42_dev_s *priv, uint8_t regaddr);
-
 /* Character driver methods */
 
 static int gy_us42_open(FAR struct file *filep);
 static int gy_us42_close(FAR struct file *filep);
 static int gy_us42_read(FAR struct file *filep, FAR char *buffer, size_t buflen);
-static int gy_us42_write(FAR struct file *filep, FAR const char *buffer,
-        size_t buflen);
+static int gy_us42_ioctl(FAR struct file *filep, int cmd, unsigned long arg);
 
 static const struct file_operations g_gy_us42fops =
 {
-  gy_us42_open,                  /* open */
-  gy_us42_close,                 /* close */
-  gy_us42_read,                  /* seek */
-  gy_us42_write,                 /* ioctl */
+  gy_us42_open,                  /* open   */
+  gy_us42_close,                 /* close  */
+  gy_us42_read,                  /* read   */
+  NULL,                		     /* write  */
+  NULL,						     /* write  */
+  gy_us42_ioctl,			     /* ioctl  */
 #ifndef CONFIG_DISABLE_POLL
-  0,                            /* poll */
+  0,                             /* poll   */
 #endif
-  0                             /* unlink */
+  0                              /* unlink */
 };
 
 /****************************************************************************
@@ -98,106 +97,6 @@ static const struct file_operations g_gy_us42fops =
 }*/
 
 /****************************************************************************
- * Name: gy_us42_getreg16
- *
- * Description:
- *   Read two 8-bit from a GY_US42 register
- *
- ****************************************************************************/
-uint16_t gy_us42_getreg16(FAR struct gy_us42_dev_s *priv, uint8_t regaddr)
-{
-  /* 16-bit data read sequence:
-   *
-   *  Start - I2C_Write_Address - GY_US42_Reg_Address -
-   *    Repeated_Start - I2C_Read_Address  - GY_US42_Read_Data_1 -
-   *      GY_US42_Read_Data_2 - STOP
-   */
-
-  struct i2c_msg_s msg[2];
-  uint8_t rxbuffer[2];
-  int ret;
-
-  /* Setup 8-bit GY_US42 address write message */
-
-  msg[0].frequency = priv->bus_config.frequency;    /* I2C frequency */
-  msg[0].addr      = priv->bus_config.address;      /* 7-bit address */
-  msg[0].flags     = 0;                             /* Write transaction, beginning with START */
-  msg[0].buffer    = &(priv->bus_config.address);   /* Transfer from this address */
-  msg[0].length    = 1;                             /* Send one byte following the address
-                                                     * (no STOP) */
-
-  /* Set up the 8-bit GY_US42 data read message */
-
-  msg[1].frequency = priv->bus_config.frequency;    /* I2C frequency */
-  msg[1].addr      = priv->bus_config.address;      /* 7-bit address */
-  msg[1].flags     = I2C_M_READ;                    /* Read transaction, beginning with Re-START */
-  msg[1].buffer    = rxbuffer;                      /* Transfer to this address */
-  msg[1].length    = 2;                             /* Receive two bytes following the address
-                                                     * (then STOP) */
-
-  /* Perform the transfer */
-
-  ret = I2C_TRANSFER(priv->i2c, msg, 2);
-  if (ret < 0)
-    {
-      snerr("ERROR: I2C_TRANSFER failed: %d\n", ret);
-      return 0;
-    }
-
-#ifdef CONFIG_GY_US42_REGDEBUG
-  _err("%02x->%02x%02x\n", regaddr, rxbuffer[0], rxbuffer[1]);
-#endif
-  return (uint16_t)rxbuffer[0] << 8 | (uint16_t)rxbuffer[1];
-}
-
-/****************************************************************************
- * Name: gy_us42_register
- *
- * Description:
- *   Register the GY_US42 character device as 'devpath'
- *
- * Input Parameters:
- *   devpath - The full path to the driver to register. E.g., "/dev/press0"
- *   i2c     - An instance of the I2C interface to use to communicate with
- *             GY_US42
- *
- * Returned Value:
- *   Zero (OK) on success; a negated errno value on failure.
- *
- ****************************************************************************/
-
-int gy_us42_register(FAR const char *devpath, FAR struct i2c_master_s *i2c)
-{
-	  FAR struct gy_us42_dev_s *priv;
-	  int ret;
-
-	  /* Initialize the GY_US42 device structure */
-
-	  priv = (FAR struct gy_us42_dev_s *)kmm_malloc(sizeof(struct gy_us42_dev_s));
-	  if (!priv)
-	    {
-	      snerr("ERROR: Failed to allocate instance\n");
-	      return -1;
-	    }
-
-	  priv->i2c = i2c;
-	  priv->bus_config.address = GY_US42_ADDR;
-	  priv->bus_config.frequency = GY_US42_FREQ;
-
-	  /* Register the character driver */
-
-	  ret = register_driver(devpath, &g_gy_us42fops, 0666, priv);
-	  if (ret < 0)
-	  {
-	      snerr("ERROR: Failed to register driver: %d\n", ret);
-	      kmm_free(priv);
-	  }
-
-	  sninfo("GY_US42 driver loaded successfully!\n");
-	  return ret;
-}
-
-/****************************************************************************
  * Name: gy_us42_open
  *
  * Description:
@@ -238,43 +137,110 @@ static int gy_us42_read(FAR struct file *filep, FAR char *buffer, size_t buflen)
 		return -EINVAL;
 	}
 
-	struct i2c_msg_s msg[2];
+	struct i2c_msg_s msg[1];
+	int ret;
+
+	/* Set up the 8-bit GY_US42 data read message */
+
+	msg[0].frequency = priv->bus_config.frequency;       /* I2C frequency */
+	msg[0].addr      = priv->bus_config.address;         /* 7-bit address */
+	msg[0].flags     = I2C_M_READ;                       /* Read transaction, beginning with Re-START */
+	msg[0].buffer    = (uint8_t*)buffer;                 /* Transfer to this address */
+	msg[0].length    = 2;                                /* Receive two bytes following the address
+	                                                      * (then STOP) */
+
+	/* Perform the transfer */
+
+	ret = I2C_TRANSFER(priv->i2c, msg, 1);
+	if (ret < 0)
+	{
+	    snerr("ERROR: I2C_TRANSFER failed: %d\n", ret);
+	}
+
+	char tmp = buffer[0];
+	buffer[0] = buffer[1];
+	buffer[1] = tmp;
+	return ret;
+}
+
+static int gy_us42_ioctl(FAR struct file *filep, int cmd, unsigned long arg) {
+	FAR struct inode *inode = filep->f_inode;
+	FAR struct gy_us42_dev_s *priv = inode->i_private;
+	int ret;
+	uint8_t measure_byte = GY_US42_MEASURE_BYTE;
+	struct i2c_msg_s msg[1];
+
+	switch(cmd) {
+
+	case GY_US42_IOCTL_CMD_MEASURE:
+		msg[0].frequency = priv->bus_config.frequency;  /* I2C frequency */
+		msg[0].addr      = priv->bus_config.address;    /* 7-bit address */
+		msg[0].flags     = 0;                        	/* Write transaction, beginning with START */
+		msg[0].buffer    = &measure_byte;        		/* Transfer from this address */
+		msg[0].length    = 1;                        	/* Send one byte following the address
+		                                                 * (no STOP) */
+		/* Perform the transfer */
+
+		ret = I2C_TRANSFER(priv->i2c, msg, 1);
+		if (ret < 0)
+		{
+		    snerr("ERROR: I2C_TRANSFER failed: %d\n", ret);
+		}
+		break;
+	default:
+		ret = -1;
+		break;
+	}
+	return ret;
+}
+
+/****************************************************************************
+ * Name: gy_us42_register
+ *
+ * Description:
+ *   Register the GY_US42 character device as 'devpath'
+ *
+ * Input Parameters:
+ *   devpath - The full path to the driver to register. E.g., "/dev/press0"
+ *   i2c     - An instance of the I2C interface to use to communicate with
+ *             GY_US42
+ *
+ * Returned Value:
+ *   Zero (OK) on success; a negated errno value on failure.
+ *
+ ****************************************************************************/
+
+int gy_us42_register(FAR const char *devpath, FAR struct i2c_master_s *i2c)
+{
+	  FAR struct gy_us42_dev_s *priv;
 	  int ret;
 
-	  /* Setup 8-bit GY_US42 address write message */
+	  /* Initialize the GY_US42 device structure */
 
-	  msg[0].frequency = priv->bus_config.frequency;    /* I2C frequency */
-	  msg[0].addr      = priv->bus_config.address;      /* 7-bit address */
-	  msg[0].flags     = 0;                             /* Write transaction, beginning with START */
-	  msg[0].buffer    = &(priv->bus_config.address);   /* Transfer from this address */
-	  msg[0].length    = 1;                             /* Send one byte following the address
-	                                                    * (no STOP) */
+	  priv = (FAR struct gy_us42_dev_s *)kmm_malloc(sizeof(struct gy_us42_dev_s));
+	  if (!priv)
+	  {
+	      snerr("ERROR: Failed to allocate instance\n");
+	      return -1;
+	  }
 
-	  /* Set up the 8-bit GY_US42 data read message */
+	  priv->i2c = i2c;
+	  priv->bus_config.address = GY_US42_ADDR;
+	  priv->bus_config.frequency = GY_US42_FREQ;
 
-	  msg[1].frequency = priv->bus_config.frequency;       /* I2C frequency */
-	  msg[1].addr      = priv->bus_config.address;         /* 7-bit address */
-	  msg[1].flags     = I2C_M_READ;                    /* Read transaction, beginning with Re-START */
-	  msg[1].buffer    = buffer;                      /* Transfer to this address */
-	  msg[1].length    = 2;                             /* Receive two bytes following the address
-	                                                     * (then STOP) */
+	  /* Register the character driver */
 
-	  /* Perform the transfer */
-
-	  ret = I2C_TRANSFER(priv->i2c, msg, 2);
+	  ret = register_driver(devpath, &g_gy_us42fops, 0666, priv);
 	  if (ret < 0)
-	    {
-	      snerr("ERROR: I2C_TRANSFER failed: %d\n", ret);
-	      return 0;
-	    }
-	return OK;
+	  {
+	      snerr("ERROR: Failed to register driver: %d\n", ret);
+	      kmm_free(priv);
+	  }
+
+	  sninfo("GY_US42 driver loaded successfully!\n");
+	  return ret;
 }
 
-static int gy_us42_write(FAR struct file *filep, FAR const char *buffer,
-        size_t buflen)
-{
-	return OK;
-}
 
 #endif /* CONFIG_I2C && CONFIG_SENSORS_GY_US42 */
 
