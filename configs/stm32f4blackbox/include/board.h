@@ -301,7 +301,7 @@
  */
 
 #define GPIO_I2C1_SCL    GPIO_I2C1_SCL_1
-#define GPIO_I2C1_SDA    GPIO_I2C1_SDA_2
+#define GPIO_I2C1_SDA    GPIO_I2C1_SDA_1
 
 /* Timer Inputs/Outputs (see the README.txt file for options) */
 
