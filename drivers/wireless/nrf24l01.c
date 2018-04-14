@@ -64,7 +64,7 @@
 #include <nuttx/signal.h>
 
 #ifdef CONFIG_WL_NRF24L01_RXSUPPORT
-#  include <nuttx/wqueue.h>
+#include <nuttx/wqueue.h>
 #endif
 
 #include <nuttx/wireless/nrf24l01.h>

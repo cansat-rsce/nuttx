@@ -144,7 +144,7 @@
 // nrf24l01+ cs pin
 #define GPIO_NRF24L01_CS 	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
 							GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN6)
-// nrf24l01+ ce pin FIXME задать правильный пин
+// nrf24l01+ ce pin
 #define GPIO_NRF24L01_CE 	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
 							GPIO_OUTPUT_CLEAR|GPIO_PORTA|GPIO_PIN1)
 // nrf24l01+ interrupt pin
@@ -161,6 +161,14 @@
 // bmp280 cs pin
 #define GPIO_BMP280_CS	  (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
                            GPIO_OUTPUT_SET|GPIO_PORTB|GPIO_PIN3)
+
+
+// mpu6000 cs pin
+#define GPIO_MPU6000_CS   (GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
+                           GPIO_OUTPUT_SET|GPIO_PORTA|GPIO_PIN4)
+
+#define GPIO_MPU6000_INT  (GPIO_INPUT|GPIO_SPEED_50MHz|GPIO_FLOAT|\
+						  GPIO_EXTI|GPIO_PORTC|GPIO_PIN4)
 
 /* omnibus-pro-v2 MicroSD
  *
@@ -239,6 +247,13 @@ int stm32_mmcsd_initialize(int minor);
 int stm32_sensors_bmp280_initialize(int minor);
 
 #endif /* CONFIG_SENSORS_BMP280 */
+
+#ifdef CONFIG_SENSORS_MPU6000
+
+// MPU6000 device intialization
+int stm32_sensors_mpu6000_initialize(int minor);
+
+#endif /* CONFIG_SENSORS_MPU6000 */
 
 #ifdef CONFIG_WL_NRF24L01
 

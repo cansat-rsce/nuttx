@@ -122,7 +122,7 @@ extern "C"
  *   Register the BMP280 character device as '/dev/baroN'
  *
  * Input Parameters:
- *   spi     - An instance of the I2C interface to use to communicate with BMP280
+ *   spi     - An instance of the SPI interface to use to communicate with BMP280
  *	 minor   - Number
  *
  * Returned Value:
@@ -137,5 +137,5 @@ int bmp280_register(FAR struct spi_dev_s *spi, int minor);
 }
 #endif
 
-#endif /* CONFIG_I2C && CONFIG_SENSORS_BMP180 */
-#endif /* __INCLUDE_NUTTX_SENSORS_BMP180_H */
+#endif /* CONFIG_SPI && CONFIG_SENSORS_BMP280 */
+#endif /* __INCLUDE_NUTTX_SENSORS_BMP280_H */

@@ -15,6 +15,7 @@
 #include <debug.h>
 
 #include <nuttx/sensors/bmp280.h>
+#include <nuttx/sensors/mpu6000.h>
 #include <nuttx/spi/spi.h>
 
 #include "stm32.h"
@@ -33,11 +34,18 @@
 #endif
 #endif
 
+#ifdef CONFIG_SENSORS_MPU6000
+#ifndef CONFIG_STM32_SPI1
+#  error "MPU6000 driver requires CONFIG_STM32_SPI1 to be enabled"
+#endif
+#endif
+
 /*****************************************************************************
  * Private Definitions
  ****************************************************************************/
 
 #define BMP280_SPI_PORT 3 /* BMP280 is connected to SPI3 port */
+#define MPU6000_SPI_PORT 1 /* MPU6000 is connected to SPI3 port */
 
 /*****************************************************************************
  * Public Functions
@@ -60,5 +68,27 @@ int stm32_sensors_bmp280_initialize(int minor) {
 }
 
 #endif /* CONFIG_SENSORS_BMP280 */
+
+#ifdef CONFIG_SENSORS_MPU6000
+
+static int _mpu6000_irqbind(xcpt_t isr, FAR void *arg) {
+	return stm32_gpiosetevent(GPIO_MPU6000_INT, true, false, false, isr, arg);
+}
+
+int stm32_sensors_mpu6000_initialize(int minor) {
+	FAR struct spi_dev_s *spi;
+
+	sninfo("INFO: Initializing MPU6000\n");
+
+	spi = stm32_spibus_initialize(MPU6000_SPI_PORT);
+	if (spi == NULL) {
+		snerr("ERROR: Failed to initialize SPI port %d\n", MPU6000_SPI_PORT);
+		return -ENODEV;
+	}
+
+	return mpu6000_register(spi, minor, _mpu6000_irqbind);
+}
+
+#endif /* CONFIG_SENSORS_MPU6000 */
 
 #endif /* CONFIG_SENSORS */

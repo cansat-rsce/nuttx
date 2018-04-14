@@ -55,6 +55,13 @@ config SENSORS_BMP280
 	select SPI
 	---help---
 		Enable driver support for the Bosch BMP280 barometer sensor.
+		
+config SENSORS_MPU6000
+	bool "MPU6000 6DOF Sensor support"
+	default n
+	select SPI
+	---help---
+		Enable driver support for the MPU6000 sensor.
 
 config SENSORS_GY_US42
 	bool "GY_US42 sonar support"

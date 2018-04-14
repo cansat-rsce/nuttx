@@ -73,6 +73,11 @@
 #   include <nuttx/sensors/bmp280.h>
 #endif
 
+#ifdef CONFIG_SENSORS_MPU6000
+#   define MPU6000_MINOR (0)
+#   include <nuttx/sensors/mpu6000.h>
+#endif
+
 #include "omnibus4prov2.h"
 
 
@@ -176,6 +181,14 @@ int stm32_bringup(void)
   if (ret < 0)
   {
       syslog(LOG_ERR, "Failed to initialize bmp280 driver: %d\n", ret);
+  }
+#endif
+
+#ifdef CONFIG_SENSORS_MPU6000
+  ret = stm32_sensors_mpu6000_initialize(MPU6000_MINOR);
+  if (ret < 0)
+  {
+      syslog(LOG_ERR, "Failed to initialize mpu6000 driver: %d\n", ret);
   }
 #endif
 

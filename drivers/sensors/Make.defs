@@ -150,6 +150,10 @@ ifeq ($(CONFIG_SENSORS_BMP280),y)
   CSRCS += bmp280.c
 endif
 
+ifeq ($(CONFIG_SENSORS_MPU6000),y)
+  CSRCS += mpu6000.c
+endif
+
 ifeq ($(CONFIG_LIS3DSH),y)
   CSRCS += lis3dsh.c
 endif

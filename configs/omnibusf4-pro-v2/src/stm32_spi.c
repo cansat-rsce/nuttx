@@ -86,6 +86,11 @@ void weak_function stm32_spidev_initialize(void)
     stm32_configgpio(GPIO_NRF24L01_CE);			/* NRF24l01+ chip enable */
     stm32_gpiowrite(GPIO_NRF24L01_CE, false);
 #endif
+
+#ifdef CONFIG_SENSORS_MPU6000
+    stm32_configgpio(GPIO_MPU6000_CS);			/* MPU6000 chip select */
+    stm32_spi1select(0, SPIDEV_ACCELEROMETER(0), false);
+#endif
 }
 
 /****************************************************************************
@@ -117,11 +122,27 @@ void weak_function stm32_spidev_initialize(void)
 void stm32_spi1select(FAR struct spi_dev_s *dev, uint32_t devid, bool selected)
 {
   spiinfo("devid: %d CS: %s\n", (int)devid, selected ? "assert" : "de-assert");
+
+#ifdef CONFIG_SENSORS_MPU6000
+  if (devid == SPIDEV_ACCELEROMETER(0))
+    {
+      stm32_gpiowrite(GPIO_MPU6000_CS, !selected);
+    }
+#endif
 }
 
 uint8_t stm32_spi1status(FAR struct spi_dev_s *dev, uint32_t devid)
 {
-  return 0;
+	uint8_t status = 0;
+
+#ifdef CONFIG_SENSOR_MPU6000
+	if (devid == SPIDEV_ACCELEROMETER(0))
+	{
+		status |= SPI_STATUS_PRESENT;
+	}
+#endif
+
+	return status;
 }
 #endif /* CONFIG_STM32_SPI1 */
 
