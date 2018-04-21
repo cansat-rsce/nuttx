@@ -524,8 +524,7 @@ static void _worker(void * arg) {
 		*( (uint16_t *)(to_revert + i) ) = BYTESWAP( *( (uint16_t *)(to_revert + i) ) );
 	}
 
-	clock_gettime(CLOCK_REALTIME, &record.time);
-	//if(record.gyro.x > 50) printf("%d\n", record.gyro.x);
+	clock_gettime(CLOCK_MONOTONIC, &record.time);
 
 	if(dev->convert) {
 		mpu6000_record_t converted;

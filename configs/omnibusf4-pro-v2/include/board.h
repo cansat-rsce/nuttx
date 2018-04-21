@@ -206,7 +206,7 @@
 
 /* UART4: only rx for gps */
 
-//#define GPIO_USART4_TX GPIO_USART4_TX_1
+#define GPIO_UART4_TX GPIO_UART4_TX_1		 // PA0
 #define GPIO_UART4_RX GPIO_UART4_RX_1		 // PA1
 
 /* UART5: is not used */
