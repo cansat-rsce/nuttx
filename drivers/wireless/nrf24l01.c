@@ -845,7 +845,8 @@ static int dosend(FAR struct nrf24l01_dev_s *dev, FAR const uint8_t *data,
 {
   uint8_t status;
   uint8_t obsvalue;
-  int ret;
+  int ret = 0;
+  int err = OK;
 
   /* Store the current lifecycle state in order to restore it after transmit
    * done.
@@ -855,86 +856,92 @@ static int dosend(FAR struct nrf24l01_dev_s *dev, FAR const uint8_t *data,
 
   nrf24l01_tostate(dev, ST_STANDBY);
 
-  /* Flush old - can't harm */
+  /* Send messages up to error or transmition of all data */
+  while(ret >= 0 && ret != datalen)
+  {
+	  /* Flush old - can't harm */
+	  nrf24l01_flush_tx(dev);
 
-  nrf24l01_flush_tx(dev);
+	  /* We can write only 32 bytes in one message */
+	  size_t towrite = (datalen - ret) <= 32 ? (datalen - ret) : 32;
 
-  /* Write payload */
+	  /* Write payload */
 
-  nrf24l01_access(dev, MODE_WRITE, NRF24L01_W_TX_PAYLOAD,
-                  (FAR uint8_t *)data, datalen);
+	  nrf24l01_access(dev, MODE_WRITE, NRF24L01_W_TX_PAYLOAD,
+					  (FAR uint8_t *)data + ret, towrite);
 
-  dev->tx_pending = true;
+	  dev->tx_pending = true;
 
-  /* Free the SPI bus during the IRQ wait */
+	  /* Free the SPI bus during the IRQ wait */
 
-  nrf24l01_unlock(dev->spi);
+	  nrf24l01_unlock(dev->spi);
 
-  /* Cause rising CE edge to start transmission */
+	  /* Cause rising CE edge to start transmission */
 
-  nrf24l01_chipenable(dev, true);
+	  nrf24l01_chipenable(dev, true);
 
-  /* Wait for IRQ (TX_DS or MAX_RT) - but don't hang on lost IRQ */
+	  /* Wait for IRQ (TX_DS or MAX_RT) - but don't hang on lost IRQ */
 
-  ret = nxsem_tickwait(&dev->sem_tx, clock_systimer(),
-                       MSEC2TICK(NRF24L01_MAX_TX_IRQ_WAIT));
+	  err = nxsem_tickwait(&dev->sem_tx, clock_systimer(),
+						   MSEC2TICK(NRF24L01_MAX_TX_IRQ_WAIT));
 
-  /* Re-acquire the SPI bus */
+	  /* Re-acquire the SPI bus */
 
-  nrf24l01_lock(dev->spi);
+	  nrf24l01_lock(dev->spi);
 
-  dev->tx_pending = false;
+	  dev->tx_pending = false;
 
-  if (ret < 0)
-    {
-       wlerr("wait for irq failed\n");
-       nrf24l01_flush_tx(dev);
-       goto out;
-    }
+	  if (err < 0)
+		{
+		   wlerr("wait for irq failed\n");
+		   nrf24l01_flush_tx(dev);
+		   ret = err;
+		   continue;
+		}
 
-  status = nrf24l01_readreg(dev, NRF24L01_OBSERVE_TX, &obsvalue, 1);
-  if (status & NRF24L01_TX_DS)
-    {
-      /* Transmit OK */
+	  status = nrf24l01_readreg(dev, NRF24L01_OBSERVE_TX, &obsvalue, 1);
+	  if (status & NRF24L01_TX_DS)
+		{
+		  /* Transmit OK */
 
-      ret = OK;
-      dev->lastxmitcount = (obsvalue & NRF24L01_ARC_CNT_MASK)
-          >> NRF24L01_ARC_CNT_SHIFT;
+		  ret += towrite;
+		  dev->lastxmitcount = (obsvalue & NRF24L01_ARC_CNT_MASK)
+			  >> NRF24L01_ARC_CNT_SHIFT;
 
-      wlinfo("Transmission OK (lastxmitcount=%d)\n", dev->lastxmitcount);
-    }
-  else if (status & NRF24L01_MAX_RT)
-    {
-      wlinfo("MAX_RT! (lastxmitcount=%d)\n", dev->lastxmitcount);
-      ret = -ECOMM;
-      dev->lastxmitcount = NRF24L01_XMIT_MAXRT;
+		  wlinfo("Transmission OK (lastxmitcount=%d)\n", dev->lastxmitcount);
+		}
+	  else if (status & NRF24L01_MAX_RT)
+		{
+		  wlinfo("MAX_RT! (lastxmitcount=%d)\n", dev->lastxmitcount);
+		  ret = -ECOMM;
+		  dev->lastxmitcount = NRF24L01_XMIT_MAXRT;
 
-      /* If no ACK packet is received the payload remains in TX fifo.  We
-       * need to flush it.
-       */
+		  /* If no ACK packet is received the payload remains in TX fifo.  We
+		   * need to flush it.
+		   */
 
-      nrf24l01_flush_tx(dev);
-    }
-  else
-    {
-      /* Unexpected... */
+		  nrf24l01_flush_tx(dev);
+		}
+	  else
+		{
+		  /* Unexpected... */
 
-      wlerr("ERROR: No TX_DS nor MAX_RT bit set in STATUS reg!\n");
-      ret = -EIO;
-    }
+		  wlerr("ERROR: No TX_DS nor MAX_RT bit set in STATUS reg!\n");
+		  ret = -EIO;
+		}
 
-out:
+	  /* Clear interrupt sources */
+
+	  nrf24l01_writeregbyte(dev, NRF24L01_STATUS, NRF24L01_TX_DS | NRF24L01_MAX_RT);
+  }
 
   /* Clear interrupt sources */
-
   nrf24l01_writeregbyte(dev, NRF24L01_STATUS, NRF24L01_TX_DS | NRF24L01_MAX_RT);
 
   /* Clear fifo */
-
   nrf24l01_flush_tx(dev);
 
   /* Restore state */
-
   nrf24l01_tostate(dev, prevstate);
   return ret;
 }
@@ -1114,6 +1121,7 @@ static ssize_t nrf24l01_write(FAR struct file *filep, FAR const char *buffer,
 
   ret = nrf24l01_send(dev, (const uint8_t *)buffer, buflen);
 
+  nrf24l01_dumpregs(dev);
   nxsem_post(&dev->devsem);
   return ret;
 }
