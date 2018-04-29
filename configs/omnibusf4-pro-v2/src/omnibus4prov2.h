@@ -255,6 +255,13 @@ int stm32_sensors_mpu6000_initialize(int minor);
 
 #endif /* CONFIG_SENSORS_MPU6000 */
 
+#ifdef CONFIG_SENSORS_GY_US42
+
+// GY_US42 device intialization
+int stm32_sensors_gy_us42_initialize(int minor);
+
+#endif
+
 #ifdef CONFIG_WL_NRF24L01
 
 // NRF24L01+ device intialization

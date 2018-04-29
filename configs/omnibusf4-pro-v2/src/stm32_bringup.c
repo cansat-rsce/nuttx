@@ -192,6 +192,14 @@ int stm32_bringup(void)
   }
 #endif
 
+#ifdef CONFIG_SENSORS_GY_US42
+  ret = stm32_sensors_gy_us42_initialize(MPU6000_MINOR);
+  if (ret < 0)
+  {
+      syslog(LOG_ERR, "Failed to initialize gy_us42 driver: %d\n", ret);
+  }
+#endif
+
 #ifdef CONFIG_WL_NRF24L01
   ret = stm32_nrf24l01_initialize();
   if (ret < 0)

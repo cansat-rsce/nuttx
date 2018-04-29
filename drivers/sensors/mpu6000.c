@@ -759,13 +759,13 @@ static int _ioctl(FAR struct file* filep, int cmd, unsigned long arg) {
  ****************************************************************************/
 
 /****************************************************************************
- * Name: bmp280_register
+ * Name: mpu6000_register
  *
  * Description:
- *   Register the BMP280 character device as '/dev/baroN'
+ *   Register the MPU6000 character device as '/dev/mpuN'
  *
  * Input Parameters:
- *   spi     - An instance of the I2C interface to use to communicate with BMP280
+ *   spi     - An instance of the SPI interface to use to communicate with MPU6000
  *	 minor   - Number
  *
  * Returned Value:
@@ -845,7 +845,7 @@ int mpu6000_register(FAR struct spi_dev_s *spi, int minor, int (_irqbind)(xcpt_t
 		return ret;
 	}
 
-#ifdef CONFIG_DEBUG_SENSORS_INFO
+/*#ifdef CONFIG_DEBUG_SENSORS_INFO
 	sninfo("BMP280 driver loaded successfully!\n");
 
 	nxsig_usleep(1000);
@@ -860,7 +860,7 @@ int mpu6000_register(FAR struct spi_dev_s *spi, int minor, int (_irqbind)(xcpt_t
 	_read(&thisIsNotFile, &result, 16);
 	sninfo("BMP280: pressure: %f pa, temperature: %f deg\n",
 				result.pressure, result.temperature);
-#endif
+#endif*/
 
 	//_worker(dev);
 
