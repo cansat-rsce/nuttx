@@ -1121,7 +1121,6 @@ static ssize_t nrf24l01_write(FAR struct file *filep, FAR const char *buffer,
 
   ret = nrf24l01_send(dev, (const uint8_t *)buffer, buflen);
 
-  nrf24l01_dumpregs(dev);
   nxsem_post(&dev->devsem);
   return ret;
 }

@@ -31,7 +31,7 @@
 #if defined(CONFIG_SPI) && defined(CONFIG_SENSORS_MPU6000)
 
 #ifndef MPU6000_FIFO_LEN
-#define MPU6000_FIFO_LEN (sizeof(mpu6000_record_t))
+#define MPU6000_FIFO_LEN (sizeof(mpu6000_record_t) * 20)
 #endif
 
 #define MPU6000_RECORD_LEN ( dev->convert? sizeof(mpu6000_record_t) : sizeof(mpu6000_record_raw_t) )
@@ -490,13 +490,13 @@ static void _convert(mpu6000_t * dev, mpu6000_record_raw_t * raw,mpu6000_record_
 		break;
 	}
 
-	record->acc.x = (float)raw->acc.x / acc_coeff;
-	record->acc.y = (float)raw->acc.y / acc_coeff;
-	record->acc.z = (float)raw->acc.z / acc_coeff;
+	record->acc.x = (float)raw->acc.x / acc_coeff * 1000.0f;
+	record->acc.y = (float)raw->acc.y / acc_coeff * 1000.0f;
+	record->acc.z = (float)raw->acc.z / acc_coeff * 1000.0f;
 	record->temperature = (float)raw->temperature / 340.0f + 36.53f;
-	record->gyro.x = (float)raw->gyro.x / gyro_coeff;
-	record->gyro.y = (float)raw->gyro.y / gyro_coeff;
-	record->gyro.z = (float)raw->gyro.z / gyro_coeff;
+	record->gyro.x = (float)raw->gyro.x / gyro_coeff * 1000.0f;
+	record->gyro.y = (float)raw->gyro.y / gyro_coeff * 1000.0f;
+	record->gyro.z = (float)raw->gyro.z / gyro_coeff * 1000.0f;
 	record->time = raw->time;
 }
 
@@ -682,7 +682,6 @@ static ssize_t _read(FAR struct file *filep, FAR char *buffer, size_t buflen)
 	ssize_t ret = _getfifo(dev, buffer, buflen);
 
 	nxsem_post(&dev->sem);
-	printf("MPU6000 _read() pointer %p\n", inode->u.i_ops->read);
 	return ret;
 }
 
@@ -826,7 +825,7 @@ int mpu6000_register(FAR struct spi_dev_s *spi, int minor, int (_irqbind)(xcpt_t
 	_set_acc_fullscale(dev, MPU6000_SETTING_ACC_FULLSCALE_16G);
 	_set_gyro_fullscale(dev, MPU6000_SETTING_GYRO_FULLSCALE_2000DPS); //maximum scale
 	_set_filter(dev, 0); //no filter
-	_set_samplerate_divider(dev, 79); //100 Hz sample rate
+	_set_samplerate_divider(dev, 80); //100 Hz sample rate
 	_set_clkmode(dev, MPU6000_SETTING_CLKMODE_INTERNAL_8MHz); //internal clock
 
 	_putreg8(dev, MPU6000_INT_ENABLE, FORM_INT_ENABLE(true));	//enabling data ready interrupt source
@@ -844,25 +843,6 @@ int mpu6000_register(FAR struct spi_dev_s *spi, int minor, int (_irqbind)(xcpt_t
 		kmm_free(dev);
 		return ret;
 	}
-
-/*#ifdef CONFIG_DEBUG_SENSORS_INFO
-	sninfo("BMP280 driver loaded successfully!\n");
-
-	nxsig_usleep(1000);
-
-	struct file thisIsNotFile;
-	struct inode thisIsNotInode;
-	bmp280_data_t result = {0, 0};
-
-	thisIsNotFile.f_inode = &thisIsNotInode;
-	thisIsNotInode.i_private = dev;
-
-	_read(&thisIsNotFile, &result, 16);
-	sninfo("BMP280: pressure: %f pa, temperature: %f deg\n",
-				result.pressure, result.temperature);
-#endif*/
-
-	//_worker(dev);
 
 	nxsem_post(&dev->sem);
 	return ret;
