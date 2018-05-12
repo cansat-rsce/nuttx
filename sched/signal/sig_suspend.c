@@ -139,7 +139,7 @@ int sigsuspend(FAR const sigset_t *set)
 
       saved_sigprocmask = rtcb->sigprocmask;
       rtcb->sigprocmask = *set;
-      rtcb->sigwaitmask = NULL_SIGNAL_SET;
+      rtcb->sigwaitmask = *set;
 
       /* And wait until one of the unblocked signals is posted */
 
