@@ -55,7 +55,6 @@
 #include "stm32_romfs.h"
 #include "../include/board.h"
 
-#include <nuttx/sensors/gy_us42.h>
 #include <nuttx/sensors/tsl2561.h>
 
 #ifdef CONFIG_STM32_OTGFS
@@ -207,12 +206,7 @@ int stm32_bringup(void)
 
 #ifdef CONFIG_SENSORS_GY_US42
 
-  FAR struct i2c_master_s *i2c;
-  stm32_configgpio(GPIO_I2C1_SCL);
-  stm32_configgpio(GPIO_I2C1_SDA);
-  i2c = stm32_i2cbus_initialize(1);
-  ret = gy_us42_register("/dev/range0", i2c);
-
+  ret = stm32_sensors_gy_us42_initialize(0);
   if (ret < 0)
   {
       snerr("ERROR: Error registering GY_US42\n");
@@ -220,8 +214,8 @@ int stm32_bringup(void)
 #endif
 
 #ifdef CONFIG_SENSORS_TSL2561
-  ret = tsl2561_register("/dev/lumen0", i2c);
 
+  ret = stm32_sensors_tsl2561_initialize(0);
   if (ret < 0)
   {
       snerr("ERROR: Error registering TSL2561\n");

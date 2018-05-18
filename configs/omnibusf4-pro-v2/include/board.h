@@ -175,15 +175,16 @@
 /* If CONFIG_ARCH_LEDs is defined, then NuttX will control the 2 LEDs on board the
  * stm32f4blackbox.  The following definitions describe how NuttX controls the LEDs:
  */
+
 /*
-#define LED_STARTED       0  /* LED1 * /
-#define LED_HEAPALLOCATE  1  /* LED2 * /
-#define LED_IRQSENABLED   2  /* LED1 + LED2 * /
-#define LED_STACKCREATED  3  /* LED3 * /
-#define LED_INIRQ         4  /* LED1 + LED3 * /
-#define LED_SIGNAL        5  /* LED2 + LED3 * /
-#define LED_ASSERTION     6  /* LED1 + LED2 + LED3 * /
-#define LED_PANIC         7  /* N/C  + N/C  + N/C + LED4 * /
+#define LED_STARTED       0  / * LED1 * /
+#define LED_HEAPALLOCATE  1  / * LED2 * /
+#define LED_IRQSENABLED   2  / * LED1 + LED2 * /
+#define LED_STACKCREATED  3  / * LED3 * /
+#define LED_INIRQ         4  / * LED1 + LED3 * /
+#define LED_SIGNAL        5  / * LED2 + LED3 * /
+#define LED_ASSERTION     6  / * LED1 + LED2 + LED3 * /
+#define LED_PANIC         7  / * N/C  + N/C  + N/C + LED4 * /
 */
 
 /* Alternate function pin selections ************************************************/
@@ -214,7 +215,7 @@
 //#define GPIO_UART5_TX GPIO_UART5_TX_1
 //#define GPIO_UART5_RX GPIO_UART5_RX_1
 
-/* USART6: is not used */
+/* UART6: is not used */
 
 //#define GPIO_USART6_RX GPIO_USART6_RX_1     // PC7
 //#define GPIO_USART6_TX GPIO_USART6_TX_1     // PC6

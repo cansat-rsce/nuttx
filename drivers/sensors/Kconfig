@@ -446,11 +446,11 @@ config SENSORS_QENCODER
 	default n
 
 config SENSORS_TSL2561
-	bool "TSL2561 sonar support"
+	bool "TSL2561 lumenosity support"
 	default n
 	select I2C
 	---help---
-		Enable driver support for the TSL2561 sonar sensor.
+		Enable driver support for the TSL2561 lumenosity sensor.
 
 config SENSORS_VEML6070
 	bool "Vishay VEML6070 UV-A Light Sensor support"

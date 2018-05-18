@@ -5,12 +5,12 @@
  *      Author: developer
  */
 
-#ifndef NUTTX_INCLUDE_NUTTX_SENSORS_GY_US42_H_
-#define NUTTX_INCLUDE_NUTTX_SENSORS_GY_US42_H_
+#ifndef NUTTX_INCLUDE_NUTTX_SENSORS_TSL2561_H_
+#define NUTTX_INCLUDE_NUTTX_SENSORS_TSL2561_H_
 
 #include <nuttx/config.h>
 
-#if defined(CONFIG_I2C) && defined(CONFIG_SENSORS_GY_US42)
+#if defined(CONFIG_I2C) && defined(CONFIG_SENSORS_TSL2561)
 
 struct i2c_master_s;
 
@@ -48,7 +48,6 @@ extern "C"
 #endif
 
 int tsl2561_register(FAR const char *devpath, FAR struct i2c_master_s *i2c);
-
 unsigned int tsl2561_get_lux(unsigned int ch0, unsigned int ch1);
 
 #undef EXTERN
@@ -56,6 +55,6 @@ unsigned int tsl2561_get_lux(unsigned int ch0, unsigned int ch1);
 }
 #endif
 
-#endif /* CONFIG_I2C && CONFIG_SENSORS_GY_US42 */
+#endif /* CONFIG_I2C && CONFIG_SENSORS_TSL2561 */
 
-#endif /* NUTTX_INCLUDE_NUTTX_SENSORS_GY_US42_H_ */
+#endif /* NUTTX_INCLUDE_NUTTX_SENSORS_TSL2561_H_ */
