@@ -186,6 +186,10 @@ ifeq ($(CONFIG_SENSORS_QENCODER),y)
   CSRCS += qencoder.c
 endif
 
+ifeq ($(CONFIG_SENSORS_TSL2561),y)
+  CSRCS += tsl2561.c
+endif
+
 # Vishay VEML6070
 
 ifeq ($(CONFIG_SENSORS_VEML6070),y)

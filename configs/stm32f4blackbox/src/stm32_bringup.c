@@ -56,6 +56,7 @@
 #include "../include/board.h"
 
 #include <nuttx/sensors/gy_us42.h>
+#include <nuttx/sensors/tsl2561.h>
 
 #ifdef CONFIG_STM32_OTGFS
 #  include "stm32_usbhost.h"
@@ -214,7 +215,16 @@ int stm32_bringup(void)
 
   if (ret < 0)
   {
-      snerr("ERROR: Error registering BM180\n");
+      snerr("ERROR: Error registering GY_US42\n");
+  }
+#endif
+
+#ifdef CONFIG_SENSORS_TSL2561
+  ret = tsl2561_register("/dev/lumen0", i2c);
+
+  if (ret < 0)
+  {
+      snerr("ERROR: Error registering TSL2561\n");
   }
 #endif
 

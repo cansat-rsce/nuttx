@@ -49,7 +49,7 @@ static const struct file_operations g_gy_us42fops =
   gy_us42_close,                 /* close  */
   gy_us42_read,                  /* read   */
   NULL,                		     /* write  */
-  NULL,						     /* write  */
+  NULL,						     /* seek   */
   gy_us42_ioctl,			     /* ioctl  */
 #ifndef CONFIG_DISABLE_POLL
   0,                             /* poll   */
