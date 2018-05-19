@@ -142,7 +142,7 @@ static void tsl2561_putreg8(FAR struct tsl2561_dev_s *priv, uint8_t regaddr, uin
 
 void tsl2561_enable(FAR struct tsl2561_dev_s *priv);
 void tsl2561_disable(FAR struct tsl2561_dev_s *priv);
-unsigned int tsl2561_calculate(unsigned int ch0, unsigned int ch1);
+int tsl2561_calculate(uint16_t ch0, uint16_t ch1);
 static int tsl2561_getlux(FAR struct tsl2561_dev_s *priv);
 
 static const struct file_operations g_tsl2561fops =
@@ -242,8 +242,8 @@ static uint16_t tsl2561_getreg16(FAR struct tsl2561_dev_s *priv, uint8_t regaddr
 
   /* MSB and LSB are inverted */
 
-  msb = (regval & 0xFF);
-  lsb = (regval & 0xFF00) >> 8;
+  lsb = (regval & 0xFF);
+  msb = (regval & 0xFF00) >> 8;
 
   regval = (msb << 8) | lsb;
 
@@ -291,6 +291,12 @@ void tsl2561_enable(FAR struct tsl2561_dev_s *priv) {
 	uint8_t regaddr = (uint8_t)TSL2561_COMMAND_BIT | (uint8_t)TSL2561_REGISTER_CONTROL;
 	uint8_t regval  = (uint8_t)TSL2561_CONTROL_POWERON;
 	tsl2561_putreg8(priv, regaddr, regval);
+	regaddr = (uint8_t)TSL2561_COMMAND_BIT | (uint8_t)TSL2561_REGISTER_TIMING;
+	regval = 0x02;
+	tsl2561_putreg8(priv, regaddr, regval);
+	regaddr = (uint8_t)TSL2561_COMMAND_BIT | (uint8_t)TSL2561_REGISTER_INTERRUPT;
+	regval = 0x00;
+	tsl2561_putreg8(priv, regaddr, regval);
 }
 
 void tsl2561_disable(FAR struct tsl2561_dev_s *priv)
@@ -301,7 +307,7 @@ void tsl2561_disable(FAR struct tsl2561_dev_s *priv)
 	free(priv);
 }
 
-unsigned int tsl2561_calculateLUX(uint16_t ch0, uint16_t ch1)
+int tsl2561_calculateLUX(uint16_t ch0, uint16_t ch1)
 {
 
 	// iGain - масштаб (0 : 1X, 1 : 16X)
@@ -395,12 +401,13 @@ unsigned int tsl2561_calculateLUX(uint16_t ch0, uint16_t ch1)
 
 static int tsl2561_getlux(FAR struct tsl2561_dev_s *priv)
 {
-	enable(priv);
-	uint16_t ch0 = tsl2561_getreg16(priv, TSL2561_REGISTER_CHAN0_LOW);
-	uint16_t ch1 = tsl2561_getreg16(priv, TSL2561_REGISTER_CHAN1_LOW);
-	priv->data.tsl2561_data16_channel_0 = ch0;
-	priv->data.tsl2561_data16_channel_1 = ch1;
-	int lux = tsl2561_calculate(ch0, ch1);
+	uint16_t ch1 = tsl2561_getreg16(priv, (0x80 | 0x20 | 0x0E));
+	printf("ch1 from getlux(): %d\n", ch1);
+	uint16_t ch0 = tsl2561_getreg16(priv, (0x80 | 0x20 | 0x0C));
+	printf("ch0 from getlux(): %d\n", ch0);
+
+	int lux = tsl2561_calculateLUX(ch0, ch1);
+	printf("lux from getlux(): %d\n", lux);
 	priv->data.tsl2561_data_lux = lux;
 	return lux;
 }
@@ -460,14 +467,8 @@ static int tsl2561_ioctl(FAR struct file *filep, int cmd, unsigned long arg)
 
 	switch(cmd) {
 
-	case TSL2561_IOCTL_CMD_MEASURE_CHANNEL_0:
-		ret = priv->data.tsl2561_data16_channel_0;
-		break;
-	case TSL2561_IOCTL_CMD_MEASURE_CHANNEL_1:
-		ret = priv->data.tsl2561_data16_channel_1;  /* Transfer from this address */
-		break;
-	case TSL2561_IOCTL_CMD_GETLUX:
-		ret = priv->data.tsl2561_data_lux;
+	case TSL2561_IOCTL_CMD_SETUP:
+		tsl2561_enable(priv);
 		break;
 	default:
 		ret = -1;
