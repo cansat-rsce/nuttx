@@ -234,6 +234,13 @@ config DEBUG_LPS25H
 
 endif # SENSORS_LPS25H
 
+config SENSORS_LSM303C
+	bool "LSM303C magnetometer support"
+	default n
+	select I2C
+	---help---
+		Enable driver support for the LSM303C magnetometer.
+
 config SENSORS_LTC4151
 	bool "LTC4151 current and voltage monitor"
 	default n

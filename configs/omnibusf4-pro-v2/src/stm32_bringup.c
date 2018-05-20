@@ -78,6 +78,11 @@
 #   include <nuttx/sensors/mpu6000.h>
 #endif
 
+#ifdef CONFIG_SENSORS_LSM303C
+#   define LSM303C_MINOR (0)
+#   include <nuttx/sensors/lsm303c.h>
+#endif
+
 #include "omnibus4prov2.h"
 
 
@@ -197,6 +202,14 @@ int stm32_bringup(void)
   if (ret < 0)
   {
       syslog(LOG_ERR, "Failed to initialize gy_us42 driver: %d\n", ret);
+  }
+#endif
+
+#ifdef CONFIG_SENSORS_LSM303C
+  ret = stm32_sensors_lsm303c_initialize(LSM303C_MINOR);
+  if (ret < 0)
+  {
+      syslog(LOG_ERR, "Failed to initialize lsm303c driver: %d\n", ret);
   }
 #endif
 
