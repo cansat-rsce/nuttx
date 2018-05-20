@@ -45,6 +45,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <debug.h>
+#include <sys/mount.h>
 
 #include <nuttx/mmcsd.h>
 #include <nuttx/signal.h>
@@ -222,7 +223,13 @@ int stm32_mmcsd_initialize(int minor)
     pthread_create(NULL, &pattr, stm32_cd_thread, NULL);
 
     spiinfo("INFO: mmcsd card has been initialized successfully\n");
-    return OK;
+
+    //Mounting as /mnt/sdN
+    char devname[16];
+    char mountpoint[16];
+    snprintf(devname, 16, "/dev/mmcsd%d", minor);
+    snprintf(mountpoint, 16, "/mnt/sd%d", minor);
+    return mount(devname, mountpoint, "vfat", 0, NULL);
 }
 
 #endif /* CONFIG_MMCSD */

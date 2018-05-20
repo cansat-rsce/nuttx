@@ -12,11 +12,14 @@
 
 #include <nuttx/config.h>
 
+#include <stdio.h>
 #include <debug.h>
 
 #include <nuttx/sensors/bmp280.h>
 #include <nuttx/sensors/mpu6000.h>
 #include <nuttx/sensors/gy_us42.h>
+#include <nuttx/sensors/lsm303c.h>
+
 #include <nuttx/spi/spi.h>
 #include <nuttx/i2c/i2c_master.h>
 
@@ -50,6 +53,7 @@
 #define BMP280_SPI_PORT 3 /* BMP280 is connected to SPI3 port */
 #define MPU6000_SPI_PORT 1 /* MPU6000 is connected to SPI3 port */
 #define GY_US42_I2C_PORT 2 /* GY_US42 is connected to I2C2 port */
+#define LSM303C_I2C_PORT 2 /* LSM303C is connected to I2C2 port */
 
 /*****************************************************************************
  * Public Functions
@@ -110,6 +114,23 @@ int stm32_sensors_gy_us42_initialize(int minor) {
 	char devname[16];
 	snprintf(devname, 16, "/dev/sonar%d", minor);
 	return gy_us42_register(devname, i2c);
+}
+
+#endif /* CONFIG_SENSORS_GY_US42 */
+
+#ifdef CONFIG_SENSORS_LSM303C
+
+int stm32_sensors_lsm303c_initialize(int minor) {
+	FAR struct i2c_master_s *i2c;
+
+	sninfo("INFO: Initializing LSM303C\n");
+
+	i2c = stm32_i2cbus_initialize(LSM303C_I2C_PORT);
+	if(i2c == NULL) {
+		snerr("ERROR: Failed to initialize I2C port %d\n", GY_US42_I2C_PORT);
+	}
+
+	return lsm303c_register(i2c, minor);
 }
 
 #endif /* CONFIG_SENSORS_GY_US42 */
