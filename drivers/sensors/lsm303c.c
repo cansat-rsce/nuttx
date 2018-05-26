@@ -65,6 +65,7 @@
 #define OM_Z		2
 #define DO			2
 #define MD			0
+#define FS			5
 
 /****************************************************************************
  * devate Type Definitions
@@ -246,6 +247,8 @@ static int _set_temperature_enabled(lsm303c_t * dev, bool enable) {
 	int16_t reg = _getreg8(dev, LSM303C_CTRL_REG_1_M);
 	if(reg < 0) return reg;
 
+	reg &= ~(1 << TEMP_EN);
+
 	_putreg8(dev, LSM303C_CTRL_REG_1_M, reg | (enable << TEMP_EN));
 	return OK;
 }
@@ -260,6 +263,8 @@ static int _set_temperature_enabled(lsm303c_t * dev, bool enable) {
 static int _set_operative_mode_XY(lsm303c_t * dev, lsm303c_setting_operative_mode_t mode) {
 	int16_t reg = _getreg8(dev, LSM303C_CTRL_REG_1_M);
 	if(reg < 0) return reg;
+
+	reg &= ~(3 << OM_XY);
 
 	_putreg8(dev, LSM303C_CTRL_REG_1_M, reg | (mode << OM_XY));
 	return OK;
@@ -276,6 +281,8 @@ static int _set_operative_mode_Z(lsm303c_t * dev, lsm303c_setting_operative_mode
 	int16_t reg = _getreg8(dev, LSM303C_CTRL_REG_4_M);
 	if(reg < 0) return reg;
 
+	reg &= ~(3 << OM_Z);
+
 	_putreg8(dev, LSM303C_CTRL_REG_4_M, reg | (mode << OM_Z));
 	return OK;
 }
@@ -291,6 +298,8 @@ static int _set_odr(lsm303c_t * dev, lsm303c_setting_odr_t datarate) {
 	int16_t reg = _getreg8(dev, LSM303C_CTRL_REG_1_M);
 	if(reg < 0) return reg;
 
+	reg &= ~(7 << DO);
+
 	_putreg8(dev, LSM303C_CTRL_REG_1_M, reg | (datarate << DO));
 	return OK;
 }
@@ -305,6 +314,8 @@ static int _set_odr(lsm303c_t * dev, lsm303c_setting_odr_t datarate) {
 static int _set_mode(lsm303c_t * dev, lsm303c_setting_mode_t mode) {
 	int16_t reg = _getreg8(dev, LSM303C_CTRL_REG_3_M);
 	if(reg < 0) return reg;
+
+	reg &= ~(11 << MD);
 
 	_putreg8(dev, LSM303C_CTRL_REG_3_M, reg | (mode << MD));
 	return OK;
@@ -457,7 +468,7 @@ int lsm303c_register(FAR struct i2c_master_s *i2c, int minor)
 	FAR lsm303c_t *dev;
 	int ret;
 
-	/* Initialize the MPU6000 device structure */
+	/* Initialize the LSM303C device structure */
 
 	dev = (FAR lsm303c_t *)kmm_malloc(sizeof(lsm303c_t));
 	if (!dev) {
@@ -469,6 +480,9 @@ int lsm303c_register(FAR struct i2c_master_s *i2c, int minor)
 	dev->devnum = minor;
 	nxsem_init(&(dev->sem), 0, 0);
 
+	volatile uint8_t arr[5];
+	_getregmany(dev, LSM303C_CTRL_REG_1_M, 5, arr);
+
 	/* Check Device ID */
 	ret = _checkid(dev);
 	if (ret < 0) {
@@ -477,7 +491,18 @@ int lsm303c_register(FAR struct i2c_master_s *i2c, int minor)
 		return ret;
 	}
 
-	_putreg8(dev, LSM303C_CTRL_REG_1_M, 3); //reset sensor
+	_putreg8(dev, LSM303C_CTRL_REG_2_M, 12); //reset sensor
+
+	_getregmany(dev, LSM303C_CTRL_REG_1_M, 5, arr);
+
+	_putreg8(dev, LSM303C_CTRL_REG_2_M, 3 << FS); //Set +-16 gauss fullscale (only one exists)
+	volatile int err = _set_mode(dev, LSM303C_SETTING_MODE_CONTINUOUS);
+	err = _set_odr(dev, LSM303C_SETTING_ODR_20Hz);
+	err = _set_operative_mode_XY(dev, LSM303C_SETTING_OPERATIVE_MODE_HIGH_PERFORMANCE);
+	err = _set_operative_mode_Z(dev, LSM303C_SETTING_OPERATIVE_MODE_HIGH_PERFORMANCE);
+	err = _set_temperature_enabled(dev, true);
+
+	_getregmany(dev, LSM303C_CTRL_REG_1_M, 5, arr);
 
 	/* Fill format string */
 	char devname[LSM303C_DEV_NAMELEN];
