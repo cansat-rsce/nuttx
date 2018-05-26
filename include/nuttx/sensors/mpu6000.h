@@ -88,6 +88,8 @@ typedef enum { //TODO
 	MPU6000_CMD_SET_CONVERT,
 	MPU6000_CMD_GET_CONVERT,
 	MPU6000_CMD_FLUSHFIFO,
+	MPU6000_CMD_SET_USEFIFO,
+	MPU6000_CMD_GET_USEFIFO,
 } mpu6000_ioctl_cmd_t;
 
 /********************************************************************************************
@@ -116,7 +118,7 @@ extern "C"
  *   Zero (OK) on success; a negated errno value on failure.
  *
  ****************************************************************************/
-int mpu6000_register(FAR struct spi_dev_s *spi, int minor, int (_irqbind)(xcpt_t isr, FAR void *arg));
+int mpu6000_register(FAR struct spi_dev_s *spi, int minor, int (_irqbind)(xcpt_t isr, FAR void *arg, bool state));
 
 #undef EXTERN
 #ifdef __cplusplus

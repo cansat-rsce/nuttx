@@ -79,8 +79,8 @@ int stm32_sensors_bmp280_initialize(int minor) {
 
 #ifdef CONFIG_SENSORS_MPU6000
 
-static int _mpu6000_irqbind(xcpt_t isr, FAR void *arg) {
-	return stm32_gpiosetevent(GPIO_MPU6000_INT, true, false, false, isr, arg);
+static int _mpu6000_irqbind(xcpt_t isr, FAR void *arg, bool state) {
+	return stm32_gpiosetevent(GPIO_MPU6000_INT, state, false, false, isr, arg);
 }
 
 int stm32_sensors_mpu6000_initialize(int minor) {
@@ -94,7 +94,7 @@ int stm32_sensors_mpu6000_initialize(int minor) {
 		return -ENODEV;
 	}
 
-	return mpu6000_register(spi, minor, _mpu6000_irqbind);
+	return mpu6000_register(spi, minor, NULL);
 }
 
 #endif /* CONFIG_SENSORS_MPU6000 */

@@ -151,6 +151,8 @@ typedef struct {
 	mpu6000_setting_acc_fullscale_t acc_fullscale;
 	mpu6000_setting_gyro_fullscale_t gyro_fullscale;
 	bool convert;
+	bool usefifo;
+	int (*_irqbind)(xcpt_t isr, FAR void *arg, bool state);
 
 	struct mpu6000_fifo_s {
 		FAR uint8_t * addr;
@@ -449,7 +451,7 @@ static void _flushfifo(mpu6000_t * dev) {
 	nxsem_post(&fifo->sem);
 }
 
-static void _convert(mpu6000_t * dev, mpu6000_record_raw_t * raw,mpu6000_record_t * record) {
+static void _convert(mpu6000_t * dev, mpu6000_record_raw_t raw,mpu6000_record_t * record) {
 	float acc_coeff, gyro_coeff;
 
 	switch(dev->acc_fullscale) {
@@ -490,21 +492,41 @@ static void _convert(mpu6000_t * dev, mpu6000_record_raw_t * raw,mpu6000_record_
 		break;
 	}
 
-	record->acc.x = (float)raw->acc.x / acc_coeff;
-	record->acc.y = (float)raw->acc.y / acc_coeff;
-	record->acc.z = (float)raw->acc.z / acc_coeff;
-	record->temperature = (float)raw->temperature / 340.0f + 36.53f;
-	record->gyro.x = (float)raw->gyro.x / gyro_coeff;
-	record->gyro.y = (float)raw->gyro.y / gyro_coeff;
-	record->gyro.z = (float)raw->gyro.z / gyro_coeff;
-	record->time = raw->time;
+	record->acc.x = (float)raw.acc.x / acc_coeff;
+	record->acc.y = (float)raw.acc.y / acc_coeff;
+	record->acc.z = (float)raw.acc.z / acc_coeff;
+	record->temperature = (float)raw.temperature / 340.0f + 36.53f;
+	record->gyro.x = (float)raw.gyro.x / gyro_coeff;
+	record->gyro.y = (float)raw.gyro.y / gyro_coeff;
+	record->gyro.z = (float)raw.gyro.z / gyro_coeff;
+	record->time = raw.time;
+}
+
+
+/****************************************************************************
+ * Name: _read_data
+ *
+ * Description:
+ *  Read data from MPU data registers and revert byte order
+ *
+ ****************************************************************************/
+static inline void _read_data(mpu6000_t * dev, mpu6000_record_raw_t * record) {
+	_getregmany(dev, MPU6000_ACCEL_XOUT_H, sizeof(mpu6000_record_raw_t) - sizeof(struct timespec), record);
+
+	uint8_t * to_revert = (uint8_t *)record;
+	//Now, it's time to revert byte order!!! FUN!!!
+	for(size_t i = 0; i < sizeof(mpu6000_record_raw_t) - sizeof (struct timespec); i+=2) {
+		*( (uint16_t *)(to_revert + i) ) = BYTESWAP( *( (uint16_t *)(to_revert + i) ) );
+	}
+
+	clock_gettime(CLOCK_MONOTONIC, &(record->time));
 }
 
 /****************************************************************************
  * Name: _worker
  *
  * Description:
- *  Routine for reading data from MPU6000
+ *  Routine for reading data from MPU6000 to FIFO on interrupt
  *
  ****************************************************************************/
 static void _worker(void * arg) {
@@ -516,19 +538,11 @@ static void _worker(void * arg) {
 
 	mpu6000_record_raw_t record;
 
-	_getregmany(dev, MPU6000_ACCEL_XOUT_H, sizeof(mpu6000_record_raw_t) - sizeof(struct timespec), &record);
-
-	uint8_t * to_revert = (uint8_t *)&record;
-	//Now, it's time to revert byte order!!! FUN!!!
-	for(size_t i = 0; i < sizeof(mpu6000_record_raw_t) - sizeof (struct timespec); i+=2) {
-		*( (uint16_t *)(to_revert + i) ) = BYTESWAP( *( (uint16_t *)(to_revert + i) ) );
-	}
-
-	clock_gettime(CLOCK_MONOTONIC, &record.time);
+	_read_data(dev, &record);
 
 	if(dev->convert) {
 		mpu6000_record_t converted;
-		_convert(dev, &record, &converted);
+		_convert(dev, record, &converted);
 		_putfifo(dev, &converted, MPU6000_RECORD_LEN);
 	}
 
@@ -638,6 +652,43 @@ static int _set_clkmode(mpu6000_t * dev, mpu6000_setting_clkmode_t clkmode) {
 	return OK;
 }
 
+static int _set_useFIFO(mpu6000_t * dev, bool state) {
+	dev->usefifo = state;
+
+	_putreg8(dev, MPU6000_INT_ENABLE, FORM_INT_ENABLE(state));	//enabling/disabling data ready interrupt source
+	_putreg8(dev, MPU6000_INT_PIN_CFG, FORM_INT_PIN_CFG(true, true) );
+
+	if(state) {
+		dev->fifo.addr = (FAR uint8_t *)kmm_malloc(MPU6000_FIFO_LEN);
+		if (!dev->fifo.addr) {
+			snerr("ERROR: Failed to allocate mpu6000 fifo\n");
+			return -ENOMEM;
+		}
+
+		memset(&( dev->irq_work ), 0, sizeof( struct work_s) );
+		nxsem_init(&(dev->fifo.sem), 0, 1);
+		_flushfifo(dev);
+
+		int ret = dev->_irqbind(_irqhandler, dev, true);
+		if (ret < 0) {
+			snerr("ERROR: Failed to bind irq: %d\n", ret);
+			kmm_free(dev->fifo.addr);
+			return ret;
+		}
+
+		return OK;
+	}
+
+	else {
+		nxsem_wait(&(dev->sem));
+		_flushfifo(dev);
+		kmm_free(dev->fifo.addr);
+		nxsem_destroy(&(dev->sem));
+
+		return dev->_irqbind(_irqhandler, dev, false);
+	}
+}
+
 /****************************************************************************
  * Name: _open
  *
@@ -677,9 +728,29 @@ static ssize_t _read(FAR struct file *filep, FAR char *buffer, size_t buflen)
 	FAR volatile struct inode        *inode = filep->f_inode;
 	FAR mpu6000_t *dev  = inode->i_private;
 
+	if(!buffer) {
+		snerr("ERROR: buffer is NULL");
+		return -EINVAL;
+	}
+
 	(void)nxsem_wait(&dev->sem);
 
-	ssize_t ret = _getfifo(dev, buffer, buflen);
+	ssize_t ret = OK;
+
+	if(dev->usefifo) ret = _getfifo(dev, buffer, buflen);
+
+	else {
+		if( buflen != sizeof(mpu6000_record_t) && buflen != sizeof(mpu6000_record_raw_t) ) {
+			snerr("ERROR: You can't read something other than raw data (n bytes) or converted data (n bytes)\n");
+			ret = -EINVAL;
+		}
+
+		else {
+			_read_data(dev, (mpu6000_record_raw_t *)buffer);
+
+			if(buflen == sizeof(mpu6000_record_t)) _convert(dev, *(mpu6000_record_raw_t *)buffer, (mpu6000_record_t *)buffer);
+		}
+	}
 
 	nxsem_post(&dev->sem);
 	return ret;
@@ -708,31 +779,33 @@ static int _ioctl(FAR struct file* filep, int cmd, unsigned long arg) {
 
 	(void)nxsem_wait(&dev->sem);
 
+	int ret = OK;
+
 	//TODO ассерты что ль поставить
 	switch(cmd) {
 
 	case MPU6000_CMD_SET_ACC_FULLSCALE:
-		_set_acc_fullscale(dev, (mpu6000_setting_acc_fullscale_t) arg); //FIXME передавать как указатели
+		ret = _set_acc_fullscale(dev, (mpu6000_setting_acc_fullscale_t) arg); //FIXME передавать как указатели
 		break;
 
 	case MPU6000_CMD_SET_GYRO_FULLSCALE:
-		_set_gyro_fullscale(dev, (mpu6000_setting_gyro_fullscale_t) arg);
+		ret = _set_gyro_fullscale(dev, (mpu6000_setting_gyro_fullscale_t) arg);
 		break;
 
 	case MPU6000_CMD_SET_FILTER:
-		_set_filter(dev, (uint8_t) arg);
+		ret = _set_filter(dev, (uint8_t) arg);
 		break;
 
 	case MPU6000_CMD_SET_SAMPLERATE_DIVIDER:
-		_set_samplerate_divider(dev, (uint8_t) arg);
+		ret = _set_samplerate_divider(dev, (uint8_t) arg);
 		break;
 
 	case MPU6000_CMD_SET_CLKMODE:
-		_set_clkmode(dev, (mpu6000_setting_clkmode_t) arg);
+		ret = _set_clkmode(dev, (mpu6000_setting_clkmode_t) arg);
 		break;
 
 	case MPU6000_CMD_SET_CONVERT:
-		//_flushfifo(dev);
+		_flushfifo(dev);
 		dev->convert = (bool) arg;
 		break;
 
@@ -744,13 +817,21 @@ static int _ioctl(FAR struct file* filep, int cmd, unsigned long arg) {
 		_flushfifo(dev);
 		break;
 
+	case MPU6000_CMD_SET_USEFIFO:
+		ret = _set_useFIFO(dev, (bool) arg);
+		break;
+
+	case MPU6000_CMD_GET_USEFIFO:
+		*(bool *)arg = dev->usefifo;
+		break;
+
 	default:
-		nxsem_post(&dev->sem);
-		return -EINVAL;
+		ret = -EINVAL;
+		break;
 	}
 
 	nxsem_post(&dev->sem);
-	return OK;
+	return ret;
 }
 
 /****************************************************************************
@@ -771,7 +852,7 @@ static int _ioctl(FAR struct file* filep, int cmd, unsigned long arg) {
  *   Zero (OK) on success; a negated errno value on failure.
  *
  ****************************************************************************/
-int mpu6000_register(FAR struct spi_dev_s *spi, int minor, int (_irqbind)(xcpt_t isr, FAR void *arg))
+int mpu6000_register(FAR struct spi_dev_s *spi, int minor, int (_irqbind)(xcpt_t isr, FAR void *arg, bool state))
 {
 	FAR mpu6000_t *dev;
 	int ret;
@@ -784,42 +865,21 @@ int mpu6000_register(FAR struct spi_dev_s *spi, int minor, int (_irqbind)(xcpt_t
 		return -ENOMEM;
 	}
 
-	dev->fifo.addr = (FAR uint8_t *)kmm_malloc(MPU6000_FIFO_LEN);
-	if (!dev) {
-		snerr("ERROR: Failed to allocate mpu6000 instance\n");
-		kmm_free(dev);
-		return -ENOMEM;
-	}
-
 	dev->spi = spi;
 	dev->devnum = minor;
 	dev->convert = false;
-	memset(&( dev->irq_work ), 0, sizeof( struct work_s) );
-	nxsem_init(&(dev->fifo.sem), 0, 1);
-	nxsem_init(&(dev->sem), 0, 0);
-	_flushfifo(dev);
-
+	dev->fifo.addr = NULL;
+	dev->_irqbind = _irqbind;
 
 	/* Check Device ID */
 	ret = _checkid(dev);
 	if (ret < 0) {
-		snerr("ERROR: Failed to register driver: %d\n", ret);
-		kmm_free(dev->fifo.addr);
+		snerr("ERROR: Checkid failed: %d\n", ret);
 		kmm_free(dev);
 		return ret;
 	}
 
 	_putreg8(dev, MPU6000_USER_CTRL, FORM_USER_CTRL(false, true)); //reset sensor
-
-	ret = _irqbind(_irqhandler, dev);
-	if (ret < 0) {
-		snerr("ERROR: Failed to bind irq: %d\n", ret);
-		kmm_free(dev->fifo.addr);
-		kmm_free(dev);
-		nxsem_post(&dev->sem);
-		return ret;
-	}
-
 	_putreg8(dev, MPU6000_USER_CTRL, FORM_USER_CTRL(true, false)); 	//enabling only SPI
 
 	_set_acc_fullscale(dev, MPU6000_SETTING_ACC_FULLSCALE_16G);
@@ -828,8 +888,10 @@ int mpu6000_register(FAR struct spi_dev_s *spi, int minor, int (_irqbind)(xcpt_t
 	_set_samplerate_divider(dev, 79); //100 Hz sample rate
 	_set_clkmode(dev, MPU6000_SETTING_CLKMODE_INTERNAL_8MHz); //internal clock
 
-	_putreg8(dev, MPU6000_INT_ENABLE, FORM_INT_ENABLE(true));	//enabling data ready interrupt source
-	_putreg8(dev, MPU6000_INT_PIN_CFG, FORM_INT_PIN_CFG(true, true) );
+	if(dev->_irqbind == NULL) _set_useFIFO(dev, false);
+	else _set_useFIFO(dev, true);
+
+	nxsem_init(&(dev->sem), 0, 0);
 
 	/* Fill format string */
 	char devname[MPU6000_DEV_NAMELEN];
@@ -841,6 +903,7 @@ int mpu6000_register(FAR struct spi_dev_s *spi, int minor, int (_irqbind)(xcpt_t
 		snerr("ERROR: Failed to register driver: %d\n", ret);
 		kmm_free(dev->fifo.addr);
 		kmm_free(dev);
+		nxsem_destroy(&(dev->sem));
 		return ret;
 	}
 
