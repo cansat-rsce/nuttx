@@ -669,7 +669,11 @@ static int _set_useFIFO(mpu6000_t * dev, bool state) {
 		nxsem_init(&(dev->fifo.sem), 0, 1);
 		_flushfifo(dev);
 
-		int ret = dev->_irqbind(_irqhandler, dev, true);
+		int ret = OK;
+
+		if(dev->_irqbind != NULL)
+			ret = dev->_irqbind(_irqhandler, dev, true);
+
 		if (ret < 0) {
 			snerr("ERROR: Failed to bind irq: %d\n", ret);
 			kmm_free(dev->fifo.addr);
@@ -680,12 +684,15 @@ static int _set_useFIFO(mpu6000_t * dev, bool state) {
 	}
 
 	else {
-		nxsem_wait(&(dev->sem));
 		_flushfifo(dev);
+		nxsem_wait(&(dev->fifo.sem));
 		kmm_free(dev->fifo.addr);
-		nxsem_destroy(&(dev->sem));
+		nxsem_destroy(&(dev->fifo.sem));
 
-		return dev->_irqbind(_irqhandler, dev, false);
+		if(dev->_irqbind != NULL)
+			return dev->_irqbind(_irqhandler, dev, false);
+
+		return OK;
 	}
 }
 
@@ -818,6 +825,7 @@ static int _ioctl(FAR struct file* filep, int cmd, unsigned long arg) {
 		break;
 
 	case MPU6000_CMD_SET_USEFIFO:
+		if(dev->usefifo == (bool) arg) break;
 		ret = _set_useFIFO(dev, (bool) arg);
 		break;
 
@@ -888,7 +896,10 @@ int mpu6000_register(FAR struct spi_dev_s *spi, int minor, int (_irqbind)(xcpt_t
 	_set_samplerate_divider(dev, 79); //100 Hz sample rate
 	_set_clkmode(dev, MPU6000_SETTING_CLKMODE_INTERNAL_8MHz); //internal clock
 
-	if(dev->_irqbind == NULL) _set_useFIFO(dev, false);
+	if(dev->_irqbind == NULL) {
+		nxsem_init(&(dev->fifo.sem), 0, 1); //Dirty hack to not break _set_useFIFO() behavior
+		_set_useFIFO(dev, false);
+	}
 	else _set_useFIFO(dev, true);
 
 	nxsem_init(&(dev->sem), 0, 0);
