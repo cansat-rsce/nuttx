@@ -285,6 +285,14 @@ int stm32_bringup(void);
 
 void weak_function stm32_spidev_initialize(void);
 
+#ifdef CONFIG_SENSORS_GY_US42
+int stm32_sensors_gy_us42_initialize(int minor);
+#endif
+
+#ifdef CONFIG_SENSORS_TSL2561
+int stm32_sensors_tsl2561_initialize(int minor);
+#endif
+
  /****************************************************************************
   * Name: stm32_i2sdev_initialize
   *

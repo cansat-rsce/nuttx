@@ -68,6 +68,14 @@ ifeq ($(CONFIG_SENSORS_QENCODER),y)
 CSRCS += stm32_qencoder.c
 endif
 
+ifeq ($(CONFIG_SENSORS_GY_US42),y)
+CSRCS += stm32_gy_us42.c
+endif
+
+ifeq ($(CONFIG_SENSORS_TSL2561),y)
+CSRCS += stm32_tsl2561.c
+endif
+
 ifeq ($(CONFIG_NSH_LIBRARY),y)
 CSRCS += stm32_appinit.c
 endif

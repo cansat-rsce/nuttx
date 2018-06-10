@@ -49,7 +49,7 @@ static const struct file_operations g_gy_us42fops =
   gy_us42_close,                 /* close  */
   gy_us42_read,                  /* read   */
   NULL,                		     /* write  */
-  NULL,						     /* write  */
+  NULL,						     /* seek   */
   gy_us42_ioctl,			     /* ioctl  */
 #ifndef CONFIG_DISABLE_POLL
   0,                             /* poll   */
@@ -212,33 +212,33 @@ static int gy_us42_ioctl(FAR struct file *filep, int cmd, unsigned long arg) {
 
 int gy_us42_register(FAR const char *devpath, FAR struct i2c_master_s *i2c)
 {
-	  FAR struct gy_us42_dev_s *priv;
-	  int ret;
+  FAR struct gy_us42_dev_s *priv;
+  int ret;
 
-	  /* Initialize the GY_US42 device structure */
+  /* Initialize the GY_US42 device structure */
 
-	  priv = (FAR struct gy_us42_dev_s *)kmm_malloc(sizeof(struct gy_us42_dev_s));
-	  if (!priv)
-	  {
-	      snerr("ERROR: Failed to allocate instance\n");
-	      return -1;
-	  }
+  priv = (FAR struct gy_us42_dev_s *)kmm_malloc(sizeof(struct gy_us42_dev_s));
+  if (!priv)
+  {
+	  snerr("ERROR: Failed to allocate instance\n");
+	  return -1;
+  }
 
-	  priv->i2c = i2c;
-	  priv->bus_config.address = GY_US42_ADDR;
-	  priv->bus_config.frequency = GY_US42_FREQ;
+  priv->i2c = i2c;
+  priv->bus_config.address = GY_US42_ADDR;
+  priv->bus_config.frequency = GY_US42_FREQ;
 
-	  /* Register the character driver */
+  /* Register the character driver */
 
-	  ret = register_driver(devpath, &g_gy_us42fops, 0666, priv);
-	  if (ret < 0)
-	  {
-	      snerr("ERROR: Failed to register driver: %d\n", ret);
-	      kmm_free(priv);
-	  }
+  ret = register_driver(devpath, &g_gy_us42fops, 0666, priv);
+  if (ret < 0)
+  {
+	  snerr("ERROR: Failed to register driver: %d\n", ret);
+	  kmm_free(priv);
+  }
 
-	  sninfo("GY_US42 driver loaded successfully!\n");
-	  return ret;
+  sninfo("GY_US42 driver loaded successfully!\n");
+  return ret;
 }
 
 
