@@ -78,9 +78,19 @@
 #   include <nuttx/sensors/mpu6000.h>
 #endif
 
+#ifdef CONFIG_SENSORS_GY_US42
+#   define GY_US42_MINOR (0)
+#   include <nuttx/sensors/mpu6000.h>
+#endif
+
 #ifdef CONFIG_SENSORS_LSM303C
 #   define LSM303C_MINOR (0)
 #   include <nuttx/sensors/lsm303c.h>
+#endif
+
+#ifdef CONFIG_SENSORS_TSL2561
+#   define TSL2561_MINOR (0)
+#   include <nuttx/sensors/tsl2561.h>
 #endif
 
 #include "omnibus4prov2.h"
@@ -198,7 +208,7 @@ int stm32_bringup(void)
 #endif
 
 #ifdef CONFIG_SENSORS_GY_US42
-  ret = stm32_sensors_gy_us42_initialize(MPU6000_MINOR);
+  ret = stm32_sensors_gy_us42_initialize(GY_US42_MINOR);
   if (ret < 0)
   {
       syslog(LOG_ERR, "Failed to initialize gy_us42 driver: %d\n", ret);
@@ -210,6 +220,14 @@ int stm32_bringup(void)
   if (ret < 0)
   {
       syslog(LOG_ERR, "Failed to initialize lsm303c driver: %d\n", ret);
+  }
+#endif
+
+#ifdef CONFIG_SENSORS_TSL2561
+  ret = stm32_sensors_tsl2561_initialize(TSL2561_MINOR);
+  if (ret < 0)
+  {
+      syslog(LOG_ERR, "Failed to initialize TSL2561 driver: %d\n", ret);
   }
 #endif
 

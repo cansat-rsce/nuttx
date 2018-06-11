@@ -19,6 +19,7 @@
 #include <nuttx/sensors/mpu6000.h>
 #include <nuttx/sensors/gy_us42.h>
 #include <nuttx/sensors/lsm303c.h>
+#include <nuttx/sensors/tsl2561.h>
 
 #include <nuttx/spi/spi.h>
 #include <nuttx/i2c/i2c_master.h>
@@ -46,14 +47,33 @@
 #endif
 #endif
 
+#ifdef CONFIG_SENSORS_GY_US42
+#ifndef CONFIG_STM32_I2C2
+#  error "GY_US42 driver requires CONFIG_STM32_SPI1 to be enabled"
+#endif
+#endif
+
+#ifdef CONFIG_SENSORS_LSM303C
+#ifndef CONFIG_STM32_I2C2
+#  error "LSM303C driver requires CONFIG_STM32_SPI1 to be enabled"
+#endif
+#endif
+
+#ifdef CONFIG_SENSORS_TSL2561
+#ifndef CONFIG_STM32_I2C2
+#  error "TSL2561 driver requires CONFIG_STM32_SPI1 to be enabled"
+#endif
+#endif
+
 /*****************************************************************************
  * Private Definitions
  ****************************************************************************/
 
 #define BMP280_SPI_PORT 3 /* BMP280 is connected to SPI3 port */
-#define MPU6000_SPI_PORT 1 /* MPU6000 is connected to SPI3 port */
-#define GY_US42_I2C_PORT 2 /* GY_US42 is connected to I2C2 port */
-#define LSM303C_I2C_PORT 2 /* LSM303C is connected to I2C2 port */
+#define MPU6000_SPI_PORT 1 /* MPU6000 is connected to SPI1 port */
+#define GY_US42_I2C_BUS 2 /* GY_US42 is connected to I2C2 port */
+#define LSM303C_I2C_BUS 2 /* LSM303C is connected to I2C2 port */
+#define TSL2561_I2C_BUS 2 /* TSL2561 is connected to I2C2 port */
 
 /*****************************************************************************
  * Public Functions
@@ -106,9 +126,9 @@ int stm32_sensors_gy_us42_initialize(int minor) {
 
 	sninfo("INFO: Initializing GY_US42\n");
 
-	i2c = stm32_i2cbus_initialize(GY_US42_I2C_PORT);
+	i2c = stm32_i2cbus_initialize(GY_US42_I2C_BUS);
 	if(i2c == NULL) {
-		snerr("ERROR: Failed to initialize I2C port %d\n", GY_US42_I2C_PORT);
+		snerr("ERROR: Failed to initialize I2C bus %d\n", GY_US42_I2C_BUS);
 	}
 
 	char devname[16];
@@ -125,14 +145,34 @@ int stm32_sensors_lsm303c_initialize(int minor) {
 
 	sninfo("INFO: Initializing LSM303C\n");
 
-	i2c = stm32_i2cbus_initialize(LSM303C_I2C_PORT);
+	i2c = stm32_i2cbus_initialize(LSM303C_I2C_BUS);
 	if(i2c == NULL) {
-		snerr("ERROR: Failed to initialize I2C port %d\n", GY_US42_I2C_PORT);
+		snerr("ERROR: Failed to initialize I2C bus %d\n", GY_US42_I2C_BUS);
 	}
 
 	return lsm303c_register(i2c, minor);
 }
 
-#endif /* CONFIG_SENSORS_GY_US42 */
+#endif /* CONFIG_SENSORS_LSM303C */
+
+#ifdef CONFIG_SENSORS_TSL2561
+
+int stm32_sensors_tsl2561_initialize(int minor) {
+	FAR struct i2c_master_s *i2c;
+
+	sninfo("INFO: Initializing TSL2561\n");
+
+	i2c = stm32_i2cbus_initialize(TSL2561_I2C_BUS);
+	if (i2c == NULL) {
+		snerr("ERROR: Failed to initialize I2C bus %d\n", TSL2561_I2C_BUS);
+		return -ENODEV;
+	}
+
+	char devpath[12] = {0};
+	snprintf(devpath, sizeof(devpath), "/dev/lumen%d", minor);
+	return tsl2561_register(devpath, i2c);
+}
+
+#endif /* CONFIG_SENSORS_TSL2561 */
 
 #endif /* CONFIG_SENSORS */

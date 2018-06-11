@@ -269,6 +269,13 @@ int stm32_sensors_lsm303c_initialize(int minor);
 
 #endif
 
+#ifdef CONFIG_SENSORS_TSL2561
+
+// LSM303C device intialization
+int stm32_sensors_tsl2561_initialize(int minor);
+
+#endif
+
 #ifdef CONFIG_WL_NRF24L01
 
 // NRF24L01+ device intialization
