@@ -110,7 +110,7 @@
 
 /* Max time to wait for TX irq (in ms) */
 
-#define NRF24L01_MAX_TX_IRQ_WAIT 2000
+#define NRF24L01_MAX_TX_IRQ_WAIT 2
 
 #define FIFO_PKTLEN_MASK  0x1F   /* 5 ls bits used to store packet length */
 #define FIFO_PKTLEN_SHIFT 0
