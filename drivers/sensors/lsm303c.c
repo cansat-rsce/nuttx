@@ -480,8 +480,9 @@ int lsm303c_register(FAR struct i2c_master_s *i2c, int minor)
 	dev->devnum = minor;
 	nxsem_init(&(dev->sem), 0, 0);
 
-	volatile uint8_t arr[5];
-	_getregmany(dev, LSM303C_CTRL_REG_1_M, 5, arr);
+	_putreg8(dev, LSM303C_CTRL_REG_2_M, 12); //reset sensor
+
+	nxsig_usleep(10000);
 
 	/* Check Device ID */
 	ret = _checkid(dev);
@@ -491,18 +492,12 @@ int lsm303c_register(FAR struct i2c_master_s *i2c, int minor)
 		return ret;
 	}
 
-	_putreg8(dev, LSM303C_CTRL_REG_2_M, 12); //reset sensor
-
-	_getregmany(dev, LSM303C_CTRL_REG_1_M, 5, arr);
-
 	_putreg8(dev, LSM303C_CTRL_REG_2_M, 3 << FS); //Set +-16 gauss fullscale (only one exists)
 	volatile int err = _set_mode(dev, LSM303C_SETTING_MODE_CONTINUOUS);
 	err = _set_odr(dev, LSM303C_SETTING_ODR_20Hz);
 	err = _set_operative_mode_XY(dev, LSM303C_SETTING_OPERATIVE_MODE_HIGH_PERFORMANCE);
 	err = _set_operative_mode_Z(dev, LSM303C_SETTING_OPERATIVE_MODE_HIGH_PERFORMANCE);
 	err = _set_temperature_enabled(dev, true);
-
-	_getregmany(dev, LSM303C_CTRL_REG_1_M, 5, arr);
 
 	/* Fill format string */
 	char devname[LSM303C_DEV_NAMELEN];
