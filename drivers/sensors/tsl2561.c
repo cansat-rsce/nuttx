@@ -402,12 +402,9 @@ int tsl2561_calculateLUX(uint16_t ch0, uint16_t ch1)
 static int tsl2561_getlux(FAR struct tsl2561_dev_s *priv)
 {
 	uint16_t ch1 = tsl2561_getreg16(priv, (0x80 | 0x20 | 0x0E));
-	printf("ch1 from getlux(): %d\n", ch1);
 	uint16_t ch0 = tsl2561_getreg16(priv, (0x80 | 0x20 | 0x0C));
-	printf("ch0 from getlux(): %d\n", ch0);
 
 	int lux = tsl2561_calculateLUX(ch0, ch1);
-	printf("lux from getlux(): %d\n", lux);
 	priv->data.tsl2561_data_lux = lux;
 	return lux;
 }
