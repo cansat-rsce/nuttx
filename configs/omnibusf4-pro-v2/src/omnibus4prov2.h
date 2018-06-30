@@ -170,6 +170,15 @@
 #define GPIO_MPU6000_INT  (GPIO_INPUT|GPIO_SPEED_50MHz|GPIO_FLOAT|\
 						  GPIO_EXTI|GPIO_PORTC|GPIO_PIN4)
 
+#define GPIO_CHUTE_DEPLOY	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
+							GPIO_OUTPUT_CLEAR|GPIO_PORTC|GPIO_PIN7)
+
+#define GPIO_CHUTE_CUT		(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
+							GPIO_OUTPUT_CLEAR|GPIO_PORTC|GPIO_PIN6)
+
+#define GPIO_LEGS_DEPLOY	(GPIO_OUTPUT|GPIO_PUSHPULL|GPIO_SPEED_50MHz|\
+							GPIO_OUTPUT_CLEAR|GPIO_PORTB|GPIO_PIN0)
+
 /* omnibus-pro-v2 MicroSD
  *
  * ---------- ------------- ------------------------------
@@ -230,7 +239,7 @@ void weak_function stm32_spidev_initialize(void);
   *   Called to configure I2S chip select GPIO pins for the stm32f4discovery
   *   board.
   *
-  ****************************************************************************/
+ ****************************************************************************/
 
 FAR struct i2s_dev_s *stm32_i2sdev_initialize(int port);
 

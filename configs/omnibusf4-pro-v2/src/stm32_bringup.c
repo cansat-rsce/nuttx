@@ -259,5 +259,9 @@ int stm32_bringup(void)
   usbdev_rndis_initialize(mac);
 #endif
 
+  stm32_configgpio(GPIO_CHUTE_DEPLOY);
+  stm32_configgpio(GPIO_CHUTE_CUT);
+  stm32_configgpio(GPIO_LEGS_DEPLOY);
+
   return ret;
 }

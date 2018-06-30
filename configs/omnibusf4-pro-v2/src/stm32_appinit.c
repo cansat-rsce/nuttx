@@ -41,7 +41,10 @@
 
 #include <nuttx/board.h>
 
+#include "stm32.h"
+
 #include "omnibus4prov2.h"
+#include "../include/boardctl.h"
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -92,3 +95,32 @@ int board_app_initialize(uintptr_t arg)
   return stm32_bringup();
 #endif
 }
+
+void _fire(uint32_t pinset) {
+	sched_lock();
+
+	stm32_gpiowrite(pinset, true);
+	usleep(10000);
+	stm32_gpiowrite(pinset, false);
+
+	sched_unlock();
+}
+
+#ifdef CONFIG_BOARDCTL_IOCTL
+int board_ioctl(unsigned int cmd, uintptr_t arg) {
+	switch(cmd) {
+	case GRANUM_FIRE_CHUTE_DEPLOY:
+		_fire(GPIO_CHUTE_DEPLOY);
+		break;
+
+	case GRANUM_FIRE_CHUTE_CUT:
+		_fire(GPIO_CHUTE_CUT);
+		break;
+
+	case GRANUM_FIRE_LEGS_DEPLOY:
+		_fire(GPIO_LEGS_DEPLOY);
+		break;
+	}
+}
+
+#endif
