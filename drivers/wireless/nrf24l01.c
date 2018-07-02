@@ -110,7 +110,7 @@
 
 /* Max time to wait for TX irq (in ms) */
 
-#define NRF24L01_MAX_TX_IRQ_WAIT 20
+#define NRF24L01_MAX_TX_IRQ_WAIT 200
 
 #define FIFO_PKTLEN_MASK  0x1F   /* 5 ls bits used to store packet length */
 #define FIFO_PKTLEN_SHIFT 0
@@ -2010,7 +2010,7 @@ int nrf24l01_setcrcmode(FAR struct nrf24l01_dev_s *dev, nrf24l01_crcmode_t setti
 
   value = nrf24l01_readregbyte(dev, NRF24L01_CONFIG);
 
-  value &= !NRF24L01_EN_CRC & !NRF24L01_CRCO;
+  value &= ~NRF24L01_EN_CRC & ~NRF24L01_CRCO;
   value |= setting << NRF24L01_CRC_SHIFT;
 
   nrf24l01_writeregbyte(dev, NRF24L01_CONFIG, value);

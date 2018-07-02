@@ -100,7 +100,7 @@ void _fire(uint32_t pinset) {
 	sched_lock();
 
 	stm32_gpiowrite(pinset, true);
-	usleep(10000);
+	usleep(50000);
 	stm32_gpiowrite(pinset, false);
 
 	sched_unlock();
