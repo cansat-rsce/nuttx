@@ -114,7 +114,7 @@ int board_ioctl(unsigned int cmd, uintptr_t arg) {
 		break;
 
 	case GRANUM_FIRE_CHUTE_CUT:
-		_fire(GPIO_CHUTE_CUT);
+		//_fire(GPIO_CHUTE_CUT);
 		break;
 
 	case GRANUM_FIRE_LEGS_DEPLOY:
