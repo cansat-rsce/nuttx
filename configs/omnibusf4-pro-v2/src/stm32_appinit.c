@@ -110,7 +110,7 @@ void _fire(uint32_t pinset) {
 int board_ioctl(unsigned int cmd, uintptr_t arg) {
 	switch(cmd) {
 	case GRANUM_FIRE_CHUTE_DEPLOY:
-		_fire(GPIO_CHUTE_DEPLOY);
+		//_fire(GPIO_CHUTE_DEPLOY);
 		break;
 
 	case GRANUM_FIRE_CHUTE_CUT:
@@ -118,7 +118,7 @@ int board_ioctl(unsigned int cmd, uintptr_t arg) {
 		break;
 
 	case GRANUM_FIRE_LEGS_DEPLOY:
-		_fire(GPIO_LEGS_DEPLOY);
+		//_fire(GPIO_LEGS_DEPLOY);
 		break;
 	}
 }
